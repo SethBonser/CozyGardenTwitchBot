@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cozy Garden Overlay</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', system-ui, sans-serif;
+      overflow: hidden;
+    }
+
+    #garden {
+      image-rendering: pixelated;
+      image-rendering: -moz-crisp-edges;
+      image-rendering: crisp-edges;
+      display: block;
+    }
+
+    /* When you open the page in a normal browser (not OBS), give it a soft preview backdrop
+       so you can see what the overlay looks like before adding it as a Browser Source.
+       OBS Browser Sources render with `body { background: transparent }` regardless. */
+    body.preview {
+      background:
+        repeating-conic-gradient(#1f1f24 0% 25%, #2a2a31 0% 50%) 50% / 24px 24px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="garden" width="800" height="120"></canvas>
+  <script src="overlay.js"></script>
+  <script>
+    // Add a checkered preview background unless we're embedded in OBS
+    if (!navigator.userAgent.includes('OBS')) {
+      document.body.classList.add('preview');
+    }
+  </script>
+</body>
+</html>
