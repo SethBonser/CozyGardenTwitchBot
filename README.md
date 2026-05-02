@@ -10,6 +10,7 @@ A cozy Twitch chatbot with a shared, expanding virtual garden. Viewers redeem ch
 - **Channel point integration** — getting seeds, watering, and harvesting are all redeemed via Twitch channel point rewards
 - **22 plants across 3 rarities** — common, uncommon, and rare flora with different bloom times and petal payouts
 - **Botanical fun facts** — every plant comes with a real-world (or in-universe) trivia tidbit revealed when its seed is unwrapped
+- **Live OBS overlay** — a transparent browser-source overlay renders the garden in real time so viewers can watch plants grow on stream
 - **Petals economy** — harvest plants to earn 🌸 petals, then spend them in the shop
 - **Stream-wide upgrades** — Copper Can, Silver Can, and Compost Bin permanently improve the garden
 - **Per-viewer consumables** — Rain Cloud and Growth Tonic for one-shot boosts
@@ -65,6 +66,7 @@ All config lives in `.env`:
 | `HARVEST_REWARD_ID` | ✅* | Reward UUID for the harvest-a-plant redemption |
 | `EXPAND_PLOT_REWARD_ID` | ✅* | Reward UUID for expanding the garden by one slot |
 | `MAX_GARDEN_SLOTS` | optional | Hard cap on garden size (default `10`) |
+| `OVERLAY_PORT` | optional | Port for the OBS overlay server (default `8080`) |
 
 \* Reward IDs can be left blank initially. The bot will print the reward UUID to the console the first time someone redeems an unrecognized reward — paste those into `.env` and restart.
 
@@ -232,13 +234,50 @@ Each plant has its own watering profile — rare plants take more waters per sta
 
 ---
 
+## 🖼 OBS Overlay
+
+The bot runs a small HTTP + WebSocket server alongside chat that renders the garden as a transparent overlay you can drop straight into OBS.
+
+### Setting it up in OBS
+
+1. Start the bot (`npm start`) — you should see `🖼  Overlay server: http://localhost:8080/` in the console
+2. In OBS, add a new **Browser Source** to your scene
+3. Configure it:
+   - **URL**: `http://localhost:8080/`
+   - **Width**: `1000` (will auto-fit the actual garden width)
+   - **Height**: `140`
+   - ✅ **Shutdown source when not visible** (optional but recommended)
+   - ✅ **Refresh browser when scene becomes active** (optional)
+4. Position the source wherever you'd like — most streamers place it along the bottom edge or in a corner
+5. The overlay updates instantly when anyone plants, waters, harvests, or expands the garden
+
+### What it shows
+
+Each garden slot is rendered as an 80×80 tile with:
+- Sky/dirt background, dirt texture, slot number badge
+- A growing plant emoji that scales up through the four stages (🌱 → 🌿 → 🌸 → bloom emoji)
+- Water progress dots along the top of each tile
+- A golden glow around blooming plants ready to harvest
+
+### Previewing without OBS
+
+Open `http://localhost:8080/` in any browser — a checkered preview backdrop appears so you can see the overlay clearly. OBS itself ignores that backdrop and renders the page transparent.
+
+### Pixel-art sprite upgrade (planned)
+
+The current overlay uses emoji rendered at chunky resolution as a placeholder. The renderer is intentionally isolated to a single function (`renderSlot()` in [overlay/public/overlay.js](overlay/public/overlay.js)) so swapping in proper 64×64 (or 16×16-scaled) sprite-atlas art later is a contained change — the WebSocket protocol, server, and tile layout stay the same.
+
+If you want to author sprites: each plant needs **4 frames** (Seed → Sprout → Budding → Bloom). Target tile size is **80×80px**, or author at 16×16 / 20×20 native and scale.
+
+---
+
 ## 📁 Project Structure
 
 ```
 cozy/
 ├── index.js              # Entry point, IRC client, message router, reward handler
-├── db.js                 # SQLite layer (better-sqlite3) for garden, viewers, upgrades, effects
-├── helpers.js            # Plant lookups, growth math, progress bars, fuzzy matching
+├── db.js                 # SQLite layer + change EventEmitter for live overlay updates
+├── helpers.js            # Plant lookups, growth math, progress bars, slot parsing
 ├── package.json
 ├── .env.example
 ├── commands/
@@ -246,8 +285,13 @@ cozy/
 │   ├── seeds.js          # !seed, !plant, !discard
 │   ├── harvest.js        # legacy cmdHarvest (now invoked via reward)
 │   └── shop.js           # !shop, !buy, shop catalog
+├── overlay/
+│   ├── server.js         # HTTP + WebSocket server, broadcasts garden state on db change
+│   └── public/
+│       ├── index.html    # OBS Browser Source page (transparent body, canvas)
+│       └── overlay.js    # Canvas renderer — single renderSlot() to swap for sprites
 └── data/
-    └── plants.json       # 22 plant definitions (rarity, watersPerStage, harvestPetals)
+    └── plants.json       # 22 plant definitions (rarity, watersPerStage, fact)
 ```
 
 ### Data model (SQLite)

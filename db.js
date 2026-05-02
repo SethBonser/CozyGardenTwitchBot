@@ -2,9 +2,15 @@
 
 const Database = require('better-sqlite3');
 const path = require('path');
+const EventEmitter = require('events');
 
 const DB_PATH = path.join(__dirname, 'cozygardenbot.db');
 const db = new Database(DB_PATH);
+
+// Emits 'change' after any mutation that affects garden visuals.
+// The overlay server subscribes to this to push updates to OBS.
+const events = new EventEmitter();
+function notify() { events.emit('change'); }
 
 // Enable WAL mode for better concurrent read performance
 db.pragma('journal_mode = WAL');
@@ -116,6 +122,7 @@ function getGardenSlotCount() {
 
 function setGardenSlotCount(n) {
   db.prepare(`INSERT OR REPLACE INTO config (key, value) VALUES ('garden_slots', ?)`).run(String(n));
+  notify();
 }
 
 function getSlot(slot) {
@@ -140,18 +147,22 @@ function plantInSlot(slot, plantId, username) {
     INSERT OR REPLACE INTO garden (slot, plant_id, planted_by, stage, waters_done, planted_at)
     VALUES (?, ?, ?, 0, 0, ?)
   `).run(slot, plantId, username, Date.now());
+  notify();
 }
 
 function waterSlot(slot, amount = 1) {
   db.prepare(`UPDATE garden SET waters_done = waters_done + ? WHERE slot = ?`).run(amount, slot);
+  notify();
 }
 
 function advanceStage(slot) {
   db.prepare(`UPDATE garden SET stage = stage + 1, waters_done = 0 WHERE slot = ?`).run(slot);
+  notify();
 }
 
 function clearSlot(slot) {
   db.prepare(`DELETE FROM garden WHERE slot = ?`).run(slot);
+  notify();
 }
 
 // ─── Upgrades helpers ──────────────────────────────────────────────────────────
@@ -164,6 +175,8 @@ function purchaseUpgrade(id, username) {
   db.prepare(`
     INSERT OR REPLACE INTO upgrades (id, purchased, purchased_by) VALUES (?, 1, ?)
   `).run(id, username);
+  // Compost Bin reduces water-per-stage requirements, so refresh the overlay.
+  notify();
 }
 
 function isUpgradePurchased(id) {
@@ -198,6 +211,7 @@ function consumeEffect(id) {
 
 module.exports = {
   db,
+  events,
   ensureViewer,
   getViewer,
   addPetals,

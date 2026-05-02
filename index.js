@@ -4,6 +4,7 @@ require('dotenv').config();
 const tmi = require('tmi.js');
 const db = require('./db');
 const { rollSeed, getPlant, getGrowthInfo, formatSlot, getWatersNeededWithUpgrade, rarityLabel, extractSlot } = require('./helpers');
+const overlayServer = require('./overlay/server');
 
 // Commands
 const { cmdGarden, cmdPetals, cmdGardeners } = require('./commands/garden');
@@ -27,7 +28,8 @@ const RARE_SEED_REWARD_ID   = process.env.RARE_SEED_REWARD_ID   || '';
 const EXPAND_PLOT_REWARD_ID = process.env.EXPAND_PLOT_REWARD_ID || '';
 const WATER_REWARD_ID       = process.env.WATER_REWARD_ID       || '';
 const HARVEST_REWARD_ID     = process.env.HARVEST_REWARD_ID     || '';
-const MAX_SLOTS = parseInt(process.env.MAX_GARDEN_SLOTS || '10', 10);
+const MAX_SLOTS    = parseInt(process.env.MAX_GARDEN_SLOTS || '10', 10);
+const OVERLAY_PORT = parseInt(process.env.OVERLAY_PORT || '8080', 10);
 
 const channel = `#${CHANNEL_NAME}`;
 
@@ -342,6 +344,8 @@ function handleReward(chan, username, rewardId, message) {
 }
 
 // ─── Connect ──────────────────────────────────────────────────────────────────
+
+overlayServer.start(OVERLAY_PORT);
 
 client.connect().then(() => {
   console.log(`🌿 CozyGardenBot connected to ${channel}`);
