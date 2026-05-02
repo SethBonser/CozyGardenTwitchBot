@@ -1,0 +1,200 @@
+[
+  {
+    "id": "daisy",
+    "name": "Daisy",
+    "emoji": "🌼",
+    "rarity": "common",
+    "watersPerStage": [2, 3, 3],
+    "harvestPetals": 100,
+    "fact": "Daisies close their petals at night and reopen at dawn — the name comes from 'day's eye'."
+  },
+  {
+    "id": "sunflower",
+    "name": "Sunflower",
+    "emoji": "🌻",
+    "rarity": "common",
+    "watersPerStage": [2, 3, 3],
+    "harvestPetals": 100,
+    "fact": "Young sunflowers track the sun across the sky each day, a behavior called heliotropism."
+  },
+  {
+    "id": "clover",
+    "name": "Clover",
+    "emoji": "🍀",
+    "rarity": "common",
+    "watersPerStage": [2, 2, 3],
+    "harvestPetals": 100,
+    "fact": "Only about 1 in 5,000 clovers has four leaves — most have three."
+  },
+  {
+    "id": "tulip",
+    "name": "Tulip",
+    "emoji": "🌷",
+    "rarity": "common",
+    "watersPerStage": [2, 3, 4],
+    "harvestPetals": 100,
+    "fact": "In 1630s Holland, a single tulip bulb could cost more than a house — peak 'Tulip Mania'."
+  },
+  {
+    "id": "lavender",
+    "name": "Lavender",
+    "emoji": "💜",
+    "rarity": "uncommon",
+    "watersPerStage": [3, 4, 4],
+    "harvestPetals": 250,
+    "fact": "Lavender belongs to the mint family and bees absolutely love it."
+  },
+  {
+    "id": "mushroom",
+    "name": "Mushroom",
+    "emoji": "🍄",
+    "rarity": "uncommon",
+    "watersPerStage": [3, 3, 5],
+    "harvestPetals": 250,
+    "fact": "Mushrooms aren't plants at all — they're more closely related to animals than to flowers!"
+  },
+  {
+    "id": "bluebell",
+    "name": "Bluebell",
+    "emoji": "🔵",
+    "rarity": "uncommon",
+    "watersPerStage": [3, 4, 5],
+    "harvestPetals": 250,
+    "fact": "Bluebell woods can take over a century to establish — they're a sign of ancient forest."
+  },
+  {
+    "id": "lotus",
+    "name": "Lotus",
+    "emoji": "🪷",
+    "rarity": "rare",
+    "watersPerStage": [4, 5, 6],
+    "harvestPetals": 600,
+    "fact": "Lotus seeds can germinate after 1,000+ years of dormancy — they're nature's time capsules."
+  },
+  {
+    "id": "moonflower",
+    "name": "Moonflower",
+    "emoji": "🌙",
+    "rarity": "rare",
+    "watersPerStage": [4, 6, 6],
+    "harvestPetals": 600,
+    "fact": "Moonflowers bloom only at night, unfurling in minutes to attract moths under the stars."
+  },
+  {
+    "id": "crystalrose",
+    "name": "Crystal Rose",
+    "emoji": "🌹",
+    "rarity": "rare",
+    "watersPerStage": [5, 5, 7],
+    "harvestPetals": 600,
+    "fact": "Legend says a Crystal Rose only blooms when watched by someone who truly believes."
+  },
+  {
+    "id": "dandelion",
+    "name": "Dandelion",
+    "emoji": "🌾",
+    "rarity": "common",
+    "watersPerStage": [2, 2, 3],
+    "harvestPetals": 100,
+    "fact": "Every part of a dandelion is edible — leaves, flowers, and even the roots."
+  },
+  {
+    "id": "poppy",
+    "name": "Poppy",
+    "emoji": "🥀",
+    "rarity": "common",
+    "watersPerStage": [2, 3, 3],
+    "harvestPetals": 100,
+    "fact": "A single poppy plant can produce up to 60,000 tiny seeds in one season."
+  },
+  {
+    "id": "cactus",
+    "name": "Cactus",
+    "emoji": "🌵",
+    "rarity": "common",
+    "watersPerStage": [1, 2, 2],
+    "harvestPetals": 100,
+    "fact": "A saguaro cactus can live over 150 years and store hundreds of gallons of water in its trunk."
+  },
+  {
+    "id": "maple",
+    "name": "Maple Sapling",
+    "emoji": "🍁",
+    "rarity": "common",
+    "watersPerStage": [2, 3, 4],
+    "harvestPetals": 100,
+    "fact": "It takes about 40 gallons of maple sap to make just one gallon of maple syrup."
+  },
+  {
+    "id": "fern",
+    "name": "Fern",
+    "emoji": "🍃",
+    "rarity": "common",
+    "watersPerStage": [2, 2, 3],
+    "harvestPetals": 100,
+    "fact": "Ferns predate dinosaurs by 200 million years and reproduce via spores, not seeds."
+  },
+  {
+    "id": "hyacinth",
+    "name": "Hyacinth",
+    "emoji": "🪻",
+    "rarity": "uncommon",
+    "watersPerStage": [3, 4, 4],
+    "harvestPetals": 250,
+    "fact": "Hyacinths are named after a Greek mythological figure beloved by the god Apollo."
+  },
+  {
+    "id": "cherryblossom",
+    "name": "Cherry Blossom",
+    "emoji": "🌸",
+    "rarity": "uncommon",
+    "watersPerStage": [3, 4, 5],
+    "harvestPetals": 250,
+    "fact": "Japan tracks cherry blossom forecasts on the news — full bloom typically lasts only a week."
+  },
+  {
+    "id": "pumpkin",
+    "name": "Pumpkin Vine",
+    "emoji": "🎃",
+    "rarity": "uncommon",
+    "watersPerStage": [3, 4, 5],
+    "harvestPetals": 250,
+    "fact": "The world record pumpkin weighed over 2,700 pounds — heavier than a small car."
+  },
+  {
+    "id": "bonsai",
+    "name": "Bonsai",
+    "emoji": "🪴",
+    "rarity": "uncommon",
+    "watersPerStage": [4, 4, 4],
+    "harvestPetals": 250,
+    "fact": "The oldest known bonsai is over 1,000 years old and still being cared for in Japan."
+  },
+  {
+    "id": "phoenixlily",
+    "name": "Phoenix Lily",
+    "emoji": "🔥",
+    "rarity": "rare",
+    "watersPerStage": [4, 5, 6],
+    "harvestPetals": 600,
+    "fact": "Phoenix Lilies are said to sprout brightest in soil scorched by wildfire — beauty from ash."
+  },
+  {
+    "id": "frostflower",
+    "name": "Frostflower",
+    "emoji": "❄️",
+    "rarity": "rare",
+    "watersPerStage": [5, 5, 6],
+    "harvestPetals": 600,
+    "fact": "Real frostflowers form when sap freezes and bursts through plant stems on cold mornings."
+  },
+  {
+    "id": "galaxyrose",
+    "name": "Galaxy Rose",
+    "emoji": "✨",
+    "rarity": "rare",
+    "watersPerStage": [4, 6, 7],
+    "harvestPetals": 600,
+    "fact": "Each Galaxy Rose petal is said to hold a tiny constellation — no two are ever the same."
+  }
+]

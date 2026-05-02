@@ -1,0 +1,19 @@
+{
+  "name": "cozygardenbot",
+  "version": "1.0.0",
+  "description": "A cozy Twitch chatbot with an expanding virtual garden 🌿",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "dotenv": "^16.4.5",
+    "tmi.js": "^1.8.5"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT"
+}
