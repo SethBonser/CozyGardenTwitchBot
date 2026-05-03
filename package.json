@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "dev": "node --watch index.js"
+    "dev": "node --watch index.js",
+    "seed-test": "node scripts/seed-test-garden.js",
+    "reset-garden": "node scripts/reset-garden.js"
   },
   "dependencies": {
     "better-sqlite3": "^9.4.3",

@@ -8,14 +8,15 @@ A cozy Twitch chatbot with a shared, expanding virtual garden. Viewers redeem ch
 
 - **Shared garden** — every viewer plants in the same plot, so the garden is a community effort
 - **Channel point integration** — getting seeds, watering, and harvesting are all redeemed via Twitch channel point rewards
+- **Channel-wide harvest payouts** — when anyone harvests a flower, every recently-active chatter shares the petal reward
 - **22 plants across 3 rarities** — common, uncommon, and rare flora with different bloom times and petal payouts
 - **Botanical fun facts** — every plant comes with a real-world (or in-universe) trivia tidbit revealed when its seed is unwrapped
-- **Live OBS overlay** — a transparent browser-source overlay renders the garden in real time so viewers can watch plants grow on stream
+- **Live OBS overlay** — a transparent browser-source overlay renders the garden in real time, complete with a wooden raised garden box, custom 32×32 pixel-art sprites, stage-based scaling, and a gentle wind-sway animation
 - **Petals economy** — harvest plants to earn 🌸 petals, then spend them in the shop
-- **Stream-wide upgrades** — Copper Can, Silver Can, and Compost Bin permanently improve the garden
-- **Per-viewer consumables** — Rain Cloud and Growth Tonic for one-shot boosts
+- **Stream-wide upgrade & per-viewer consumables** — Compost Bin permanently improves the garden; Rain Cloud and Growth Tonic give one-shot boosts
 - **Persistent state** — SQLite database keeps the garden alive across restarts
 - **Leaderboards** — top gardeners are tracked by total waters given
+- **Bot-friendly** — exclude other chat bots from rewards via `IGNORED_USERS`
 
 ---
 
@@ -67,6 +68,8 @@ All config lives in `.env`:
 | `EXPAND_PLOT_REWARD_ID` | ✅* | Reward UUID for expanding the garden by one slot |
 | `MAX_GARDEN_SLOTS` | optional | Hard cap on garden size (default `10`) |
 | `OVERLAY_PORT` | optional | Port for the OBS overlay server (default `8080`) |
+| `ACTIVE_VIEWER_WINDOW_MIN` | optional | How recently someone must have chatted to share in a harvest payout, in minutes (default `30`) |
+| `IGNORED_USERS` | optional | Comma-separated list of usernames (other bots) to exclude from activity tracking and harvest rewards. The CozyGardenBot's own account is always ignored. |
 
 \* Reward IDs can be left blank initially. The bot will print the reward UUID to the console the first time someone redeems an unrecognized reward — paste those into `.env` and restart.
 
@@ -129,11 +132,13 @@ You need to be a Twitch **Affiliate** or **Partner** for custom channel point re
 
 | Reward | Suggested Cost | Recommended Settings |
 |---|---|---|
-| **Get a Seed** | 100 | — |
-| **Rare Seed** | 500 | — |
-| **Water Plant** | 50 | ✅ **Require Viewer to Enter Text** (so users can type a slot number) |
+| **Get a Seed** | 100 | ✅ **Require Viewer to Enter Text** |
+| **Rare Seed** | 500 | ✅ **Require Viewer to Enter Text** |
+| **Water Plant** | 50 | ✅ **Require Viewer to Enter Text** (slot number, e.g. `3`, or leave blank to auto-water) |
 | **Harvest Plant** | 100 | ✅ **Require Viewer to Enter Text** (optional slot number — useful when multiple plants are blooming) |
-| **Expand Garden** | 1000 | ✅ Skip Reward Requests Queue (optional, for instant resolution) |
+| **Expand Garden** | 1000 | ✅ **Require Viewer to Enter Text** + ✅ Skip Reward Requests Queue (optional) |
+
+> 🔒 **Why every reward needs text input enabled:** the bot detects redemptions through chat messages. A redemption only produces a chat message if the reward requires viewer text — channel-point-only redemptions bypass IRC entirely. For rewards that don't *use* the text (Get Seed, Rare Seed, Expand Garden), put a friendly **User Input Prompt** like `Type anything to confirm 🌱` so viewers know what to do.
 
 4. **Get the reward UUIDs:**
    - Start the bot with the IDs blank: `npm start`
@@ -210,7 +215,7 @@ Each plant has its own watering profile — rare plants take more waters per sta
 | **Get a Seed** | Rolls a random seed (60/30/10 common/uncommon/rare) and shares a fun fact about the plant. You can only hold one seed at a time — plant or discard it before redeeming again. |
 | **Rare Seed** | Always rolls a rare seed (with its fun fact). Same one-seed-at-a-time rule. |
 | **Water Plant** | Waters a plant. If the user types a slot number when redeeming (e.g. `3`), waters that slot; otherwise auto-picks the slot with the lowest water progress. |
-| **Harvest Plant** | Harvests a bloomed plant. If the user types a slot number when redeeming, harvests that slot; otherwise auto-picks the first bloomed slot. Petals go to the redeemer. |
+| **Harvest Plant** | Harvests a bloomed plant. If the user types a slot number when redeeming, harvests that slot; otherwise auto-picks the first bloomed slot. **Petals go to the redeemer *and* every other viewer who has chatted recently** — the harvest is a shared community reward. |
 | **Expand Garden** | Adds one slot to the shared garden, up to `MAX_GARDEN_SLOTS`. |
 
 ---
@@ -221,9 +226,9 @@ Each plant has its own watering profile — rare plants take more waters per sta
 
 | Item | Cost | Effect |
 |---|---|---|
-| 🪣 Copper Can | 400 🌸 | (legacy cooldown perk — kept for compatibility) |
-| 🪣✨ Silver Can | 800 🌸 | (legacy cooldown perk — requires Copper Can) |
 | 🪣🌿 Compost Bin | 600 🌸 | All plants need 20% fewer waters per stage |
+| 🪣 Copper Can | 400 🌸 | *Vestigial* — used to reduce a watering cooldown that no longer exists since watering became a channel reward. Kept in the shop for now; safe to ignore. |
+| 🪣✨ Silver Can | 800 🌸 | *Vestigial* — see Copper Can. Requires Copper Can. |
 
 ### Per-viewer consumables (single-use)
 
@@ -253,21 +258,46 @@ The bot runs a small HTTP + WebSocket server alongside chat that renders the gar
 
 ### What it shows
 
-Each garden slot is rendered as an 80×80 tile with:
-- Sky/dirt background, dirt texture, slot number badge
-- A growing plant emoji that scales up through the four stages (🌱 → 🌿 → 🌸 → bloom emoji)
-- Water progress dots along the top of each tile
-- A golden glow around blooming plants ready to harvest
+The overlay renders one continuous **wooden raised garden box** with all the plants growing inside it. Above the box is fully transparent so the garden feels open against your stream. Each plant column shows:
+
+- A pixel-art **plant sprite** that scales up through stages — sprout (50%) → budding (75%) → bloom (100%) — so growth is always visually obvious even with same-sized source art
+- A subtle **wind sway** animation, anchored at the base of each plant. Seeds stay still (they're underground); blooms sway the most
+- **Water-progress dots** in the dirt strip showing how close the plant is to advancing
+- A warm **golden wash** above any bloomed plant to spotlight that it's harvest-ready
+
+Below the box, a unified **info strip** shows three rows per slot:
+1. `Slot N`
+2. Plant name (or *empty* in faded text)
+3. Stage label — `Seed` / `Sprout` / `Budding` / `Bloom` (gold for blooms)
 
 ### Previewing without OBS
 
 Open `http://localhost:8080/` in any browser — a checkered preview backdrop appears so you can see the overlay clearly. OBS itself ignores that backdrop and renders the page transparent.
 
-### Pixel-art sprite upgrade (planned)
+### Pixel-art sprites
 
-The current overlay uses emoji rendered at chunky resolution as a placeholder. The renderer is intentionally isolated to a single function (`renderSlot()` in [overlay/public/overlay.js](overlay/public/overlay.js)) so swapping in proper 64×64 (or 16×16-scaled) sprite-atlas art later is a contained change — the WebSocket protocol, server, and tile layout stay the same.
+Sprites live alongside `plants.json` in `data/Sprites/` and are served at `/sprites/` by the overlay server. The expected layout:
 
-If you want to author sprites: each plant needs **4 frames** (Seed → Sprout → Budding → Bloom). Target tile size is **80×80px**, or author at 16×16 / 20×20 native and scale.
+```
+data/Sprites/
+├── seed_sprite.png                       ← shared seed (stage 0), used for every plant
+├── <PlantFolder>/                        ← PascalCase folder per plant
+│   ├── <plant_id>_sprout_sprite.png      ← stage 1
+│   ├── <plant_id>_budding_sprite.png     ← stage 2
+│   └── <plant_id>_bloom_sprite.png       ← stage 3
+```
+
+For example: `data/Sprites/Daisy/daisy_bloom_sprite.png`, `data/Sprites/PhoenixLily/phoenixlily_budding_sprite.png`.
+
+The mapping from `plant_id` (lowercase, from [data/plants.json](data/plants.json)) to folder name (PascalCase) lives in `PLANT_SPRITE_FOLDERS` in [overlay/public/overlay.js](overlay/public/overlay.js) — if you add a new plant, add an entry there too.
+
+**Authoring tips:**
+- **Native resolution: 32×32px.** Sprites are drawn at 64×64 for blooms (clean 2× scale, perfectly crisp pixels)
+- All four stages use the **same 32×32 frame size** — the overlay handles size differences by scaling: sprout renders at 32×32 (1×), budding at 48×48 (1.5×), bloom at 64×64 (2×). You don't need to scale your art per stage, just make each frame visually appropriate
+- Use **transparent backgrounds** — the wooden box and dirt are already drawn by the overlay; each sprite should just be the plant itself
+- Anchor the plant to the **bottom of its frame** so it appears to grow out of the dirt
+- The **shared seed sprite** (`seed_sprite.png`) is automatically pushed below the dirt line so it looks buried
+- Any sprites still loading or missing **gracefully fall back to emoji rendering** — the overlay never breaks if you only have a few sprites done
 
 ---
 
@@ -280,18 +310,23 @@ cozy/
 ├── helpers.js            # Plant lookups, growth math, progress bars, slot parsing
 ├── package.json
 ├── .env.example
+├── .gitignore
 ├── commands/
-│   ├── garden.js         # !garden, !petals, !gardeners (and legacy cmdWater)
+│   ├── garden.js         # !garden, !petals, !gardeners
 │   ├── seeds.js          # !seed, !plant, !discard
-│   ├── harvest.js        # legacy cmdHarvest (now invoked via reward)
+│   ├── harvest.js        # cmdHarvest helper (harvest is invoked via channel reward)
 │   └── shop.js           # !shop, !buy, shop catalog
 ├── overlay/
 │   ├── server.js         # HTTP + WebSocket server, broadcasts garden state on db change
 │   └── public/
 │       ├── index.html    # OBS Browser Source page (transparent body, canvas)
-│       └── overlay.js    # Canvas renderer — single renderSlot() to swap for sprites
+│       └── overlay.js    # Canvas renderer — wooden box, sprites, sway, info strip
+├── scripts/
+│   ├── seed-test-garden.js  # Populate the garden with one plant at every stage for overlay testing
+│   └── reset-garden.js      # Clear all slots and reset the garden to default size
 └── data/
-    └── plants.json       # 22 plant definitions (rarity, watersPerStage, fact)
+    ├── plants.json       # 22 plant definitions (rarity, watersPerStage, harvestPetals, fact)
+    └── Sprites/          # Pixel-art assets (seed + per-plant folders)
 ```
 
 ### Data model (SQLite)
@@ -308,11 +343,15 @@ cozy/
 
 ## 🛠️ Development Notes
 
-- The bot listens on both `message` (IRC reward redemptions, with `custom-reward-id` in tags) and `redeem` (some tmi.js forks) for maximum compatibility
+- The bot detects redemptions via the IRC `message` event by reading the `custom-reward-id` tag — every reward you want the bot to handle therefore needs **Require Viewer to Enter Text** enabled in the Twitch dashboard
+- A **dedup cache** keyed off Twitch's per-message ID prevents the same redemption from triggering twice (rare but possible during network blips)
 - Unknown reward IDs are logged to the console with instructions for adding them to `.env`
 - Stage advancement is automatic: as soon as `waters_done >= watersNeeded` for the current stage, the plant advances; bloomed plants stop accepting water
 - The Growth Tonic effect is consumed on the next water of the targeted slot, including via the *Water Plant* reward
 - All channel reward responses are also visible in chat, so spectators can follow the action
+- On startup the bot **announces itself in chat** with the full command + reward summary, so viewers always have the info handy
+- **Connection diagnostics** — the bot logs IRC lifecycle events (`connecting`, `logon`, `connected`, `disconnected`, `notice`) and prints a verbose error message with common causes if connection fails
+- **Debug toggles** in `.env`: set `DEBUG_TMI=true` to log raw IRC traffic, or `DEBUG_REWARDS=true` to log every chat message's reward-tag presence/absence
 
 ### Robustness & input validation
 
@@ -324,6 +363,17 @@ The bot is built to be hard to break with weird user input:
 - **Held-seed guard** — viewers can only hold one valid seed at a time; redeeming *Get/Rare Seed* while already holding one is blocked with a reminder to plant or discard.
 - **Slot state checks** — empty, already-bloomed, and unknown-plant slots are caught and explained on every command (water, harvest, plant, growth tonic).
 - **Petals safety** — `deductPetals` refuses to drop a viewer below zero, and `!buy` checks affordability before any state changes.
+
+### Test scripts
+
+Two helper scripts for overlay/visual testing without waiting for live redemptions. **Stop the bot before running them** (SQLite locks the DB while the bot is alive).
+
+| Command | What it does |
+|---|---|
+| `npm run seed-test` | Sets the garden to 4 slots and plants one example at every stage (Daisy seed, Tulip sprout, Lavender budding, Crystal Rose bloom). Lets you verify sprite rendering, scaling, and the bloom highlight side-by-side. |
+| `npm run reset-garden` | Clears every planted slot and resets the slot count to the default of 3. Doesn't touch viewers, petals, upgrades, or active effects. |
+
+After running either script, start the bot (`npm start`) and refresh your overlay/Browser Source.
 
 ### Adding a new plant
 
@@ -345,7 +395,27 @@ Add an entry to `data/plants.json`:
 - `harvestPetals` should match the rarity tier (common 100, uncommon 250, rare 600) for balance
 - `fact` is shown in chat whenever the seed is unwrapped or inspected — keep it short and chat-friendly
 
-No restart-time migration needed — the JSON is read on startup.
+If you want sprites for the new plant:
+1. Create a folder `data/Sprites/<PascalCaseName>/` matching the plant — e.g. `data/Sprites/Rosemary/`
+2. Drop in three sprites: `<plant_id>_sprout_sprite.png`, `<plant_id>_budding_sprite.png`, `<plant_id>_bloom_sprite.png` (32×32 native, transparent background)
+3. Add the lowercase id → PascalCase mapping to `PLANT_SPRITE_FOLDERS` in [overlay/public/overlay.js](overlay/public/overlay.js)
+
+No restart-time migration needed — the JSON is read on startup, and sprites are lazy-loaded the first time they're needed.
+
+---
+
+## 🩹 Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| `📨 NOTICE [msg_login_unsuccessful] Login authentication failed` | Bad/expired `OAUTH_TOKEN`, or token is for the wrong account | Re-generate via [twitchtokengenerator.com](https://twitchtokengenerator.com/) signed in to the bot account in incognito mode. Make sure it's prefixed with `oauth:` |
+| `Improperly formatted auth` | Missing `oauth:` prefix on `OAUTH_TOKEN` | Add `oauth:` to the start of the value |
+| Bot connects but does nothing on redemption | Reward doesn't have *Require Viewer to Enter Text* enabled | Enable it on every garden reward in the Twitch dashboard |
+| Reward triggered twice | Either two bot processes are running, or a transient Twitch resend | Check Task Manager for stray `node.exe`. The bot now dedups by message ID, so persistent doubles are usually a process-duplication issue |
+| Overlay won't load in OBS | Wrong URL or port mismatch | Confirm `npm start` log shows `🖼  Overlay server: http://localhost:8080/`, then add that exact URL as a Browser Source |
+| Overlay loads but plants are emoji, not sprites | Sprite path mismatch (folder name, file name, or PLANT_SPRITE_FOLDERS map) | Check the browser dev console (F12 in OBS Browser Source debug, or right-click → Inspect on a regular browser preview) for 404s on `/sprites/...` |
+
+For more detail, run with `DEBUG_REWARDS=true` (see [Configuration](#-configuration)) to log every chat message's reward-tag presence — that immediately reveals whether redemptions are reaching the bot.
 
 ---
 
