@@ -82,6 +82,32 @@ function addPetals(username, amount) {
   db.prepare(`UPDATE viewers SET petals = petals + ? WHERE username = ?`).run(amount, username);
 }
 
+// Award the same amount of petals to a list of viewers in a single transaction.
+// Returns the count of viewers credited (skips empty/duplicate usernames).
+function addPetalsToMany(usernames, amount) {
+  const seen = new Set();
+  const cleaned = [];
+  for (const u of usernames || []) {
+    if (!u) continue;
+    const lower = String(u).toLowerCase();
+    if (seen.has(lower)) continue;
+    seen.add(lower);
+    cleaned.push(lower);
+  }
+  if (!cleaned.length || amount <= 0) return 0;
+
+  const insertViewer = db.prepare(`INSERT OR IGNORE INTO viewers (username) VALUES (?)`);
+  const updatePetals = db.prepare(`UPDATE viewers SET petals = petals + ? WHERE username = ?`);
+  const tx = db.transaction(list => {
+    for (const u of list) {
+      insertViewer.run(u);
+      updatePetals.run(amount, u);
+    }
+  });
+  tx(cleaned);
+  return cleaned.length;
+}
+
 function deductPetals(username, amount) {
   ensureViewer(username);
   const viewer = getViewer(username);
@@ -215,6 +241,7 @@ module.exports = {
   ensureViewer,
   getViewer,
   addPetals,
+  addPetalsToMany,
   deductPetals,
   setHeldSeed,
   recordWater,

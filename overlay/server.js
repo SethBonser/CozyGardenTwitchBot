@@ -44,6 +44,8 @@ function buildState() {
 function start(port = 8080) {
   const app = express();
   app.use(express.static(path.join(__dirname, 'public')));
+  // Expose the sprite assets stored alongside plants.json so the overlay can load them.
+  app.use('/sprites', express.static(path.join(__dirname, '..', 'data', 'Sprites')));
   app.get('/state', (req, res) => res.json(buildState()));
 
   const server = http.createServer(app);
