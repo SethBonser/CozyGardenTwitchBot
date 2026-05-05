@@ -3,7 +3,7 @@
 require('dotenv').config();
 const tmi = require('tmi.js');
 const db = require('./db');
-const { rollSeed, getPlant, getGrowthInfo, formatSlot, getWatersNeededWithUpgrade, rarityLabel, extractSlot } = require('./helpers');
+const { rollSeed, getPlant, getGrowthInfo, formatSlot, getEffectiveWatersNeeded, rarityLabel, extractSlot } = require('./helpers');
 const overlayServer = require('./overlay/server');
 
 // Commands
@@ -31,6 +31,41 @@ const HARVEST_REWARD_ID     = process.env.HARVEST_REWARD_ID     || '';
 const MAX_SLOTS    = parseInt(process.env.MAX_GARDEN_SLOTS || '10', 10);
 const OVERLAY_PORT = parseInt(process.env.OVERLAY_PORT || '8080', 10);
 const ACTIVE_VIEWER_WINDOW_MS = parseInt(process.env.ACTIVE_VIEWER_WINDOW_MIN || '30', 10) * 60 * 1000;
+
+// ─── Currency mode switch ─────────────────────────────────────────────────────
+// USE_CHANNEL_REWARDS=true (default) — players redeem Twitch channel point
+// rewards to get seeds, water, harvest, and expand the garden. Free actions.
+// USE_CHANNEL_REWARDS=false — same actions are run as chat commands and cost
+// petals instead of channel points. Players init themselves via !startgarden
+// to receive STARTER_PETALS, then spend petals to play.
+const USE_CHANNEL_REWARDS = String(process.env.USE_CHANNEL_REWARDS ?? 'true').toLowerCase() !== 'false';
+
+// Petal costs used when USE_CHANNEL_REWARDS=false (ignored otherwise)
+const STARTER_PETALS  = parseInt(process.env.STARTER_PETALS  || '100', 10);
+
+// Commands a viewer can run BEFORE typing !startgarden in petals-only mode.
+// Anything not in this set is gated behind starter-petal claiming.
+const COMMANDS_OPEN_BEFORE_START = new Set([
+  '!startgarden',
+  '!gardenhelp',
+  '!garden',         // read-only view of the shared garden
+  '!gardeners',      // public leaderboard
+  '!shop',           // browse prices (helps people decide whether to start)
+]);
+const SEED_COST          = parseInt(process.env.SEED_COST          || '30',  10);
+const UNCOMMON_SEED_COST = parseInt(process.env.UNCOMMON_SEED_COST || '100', 10);
+const RARE_SEED_COST     = parseInt(process.env.RARE_SEED_COST     || '200', 10);
+const WATER_COST      = parseInt(process.env.WATER_COST      || '5',   10);
+const FERTILIZE_COST  = parseInt(process.env.FERTILIZE_COST  || '300', 10);
+
+// Expand uses a quadratic curve: cost = EXPAND_COST_BASE × currentSize²
+// so each subsequent expansion is meaningfully more expensive than the last.
+// Default base 100 yields: 3→4 = 900, 4→5 = 1600, 5→6 = 2500, 9→10 = 8100.
+const EXPAND_COST_BASE = parseInt(process.env.EXPAND_COST_BASE || '100', 10);
+function getExpandCost() {
+  const current = db.getGardenSlotCount();
+  return EXPAND_COST_BASE * current * current;
+}
 
 // Usernames to ignore for activity tracking and reward eligibility — typically
 // other chat bots (Nightbot, StreamElements, etc.) so they don't get petals.
@@ -111,13 +146,28 @@ client.on('message', (chan, userstate, message, self) => {
   const cmd   = parts[0].toLowerCase();
   const args  = parts.slice(1);
 
+  // In petals-only mode, every command except the join/help/public-view
+  // commands requires the user to have started their garden first. Channel-
+  // rewards mode has no equivalent gate (there is no !startgarden), so we skip this.
+  if (!USE_CHANNEL_REWARDS && !COMMANDS_OPEN_BEFORE_START.has(cmd) && !db.hasClaimedStarter(userstate.username)) {
+    client.say(chan,
+      `@${userstate.username} 🌱 You haven't started your garden yet! Type !startgarden to claim ${STARTER_PETALS}🌸 starter petals and begin.`
+    );
+    return;
+  }
+
   switch (cmd) {
     case '!garden':
       cmdGarden(client, chan, userstate, args);
       break;
 
     case '!water':
-      client.say(chan, `@${userstate.username} 💧 Watering is done via channel point rewards!`);
+      if (USE_CHANNEL_REWARDS) {
+        client.say(chan, `@${userstate.username} 💧 Watering is done via channel point rewards!`);
+      } else {
+        runPetalCostAction(chan, userstate.username, 'water', WATER_COST,
+          () => performWater(userstate.username, args.join(' ')));
+      }
       break;
 
     case '!petals':
@@ -141,27 +191,76 @@ client.on('message', (chan, userstate, message, self) => {
       break;
 
     case '!harvest':
-      client.say(chan, `@${userstate.username} 🌺 Harvesting is done via channel point rewards!`);
+      if (USE_CHANNEL_REWARDS) {
+        client.say(chan, `@${userstate.username} 🌺 Harvesting is done via channel point rewards!`);
+      } else {
+        // Harvesting itself doesn't cost petals — the action pays them out
+        runPetalCostAction(chan, userstate.username, 'harvest', 0,
+          () => performHarvest(userstate.username, args.join(' ')));
+      }
+      break;
+
+    case '!expand':
+      if (USE_CHANNEL_REWARDS) {
+        client.say(chan, `@${userstate.username} 🌿 Use the "Expand Garden" channel point reward!`);
+      } else {
+        runPetalCostAction(chan, userstate.username, 'expand the garden', getExpandCost(),
+          () => performExpand(userstate.username));
+      }
+      break;
+
+    case '!startgarden':
+      cmdStartGarden(client, chan, userstate);
       break;
 
     case '!shop':
-      cmdShop(client, chan, userstate);
+      cmdShop(client, chan, userstate, buildShopContext());
       break;
 
     case '!buy':
-      cmdBuy(client, chan, userstate, args);
+      cmdBuy(client, chan, userstate, args, buildShopContext());
       break;
 
     case '!gardenhelp':
-      client.say(chan,
-        '🌿 Garden Commands: !garden [slot] | !seed | !plant [slot] | !discard | !petals | !gardeners | !shop | !buy <item> — Channel Rewards: Get Seed | Water Plant | Harvest Plant | Expand Garden'
-      );
+      client.say(chan, gardenHelpMessage());
       break;
 
     default:
       break;
   }
 });
+
+// ─── Help text + !startgarden handler (mode-aware) ───────────────────────────
+
+function gardenHelpMessage() {
+  if (USE_CHANNEL_REWARDS) {
+    return '🌿 Commands: !garden [slot] | !seed | !plant [slot] | !discard | !petals | !gardeners | !shop | !buy <item> — Channel Rewards: Get Seed | Water Plant | Harvest Plant | Expand Garden';
+  }
+  return `🌿 Commands: !startgarden (start with ${STARTER_PETALS}🌸) | !buy seed (${SEED_COST}🌸) | !buy uncommon seed (${UNCOMMON_SEED_COST}🌸) | !buy rare seed (${RARE_SEED_COST}🌸) | !plant [slot] | !water [slot] (${WATER_COST}🌸) | !harvest [slot] | !expand (next: ${getExpandCost()}🌸) | !seed | !discard | !garden [slot] | !petals | !gardeners | !shop`;
+}
+
+function cmdStartGarden(client, chan, userstate) {
+  const username = userstate.username;
+  const viewer = db.getViewer(username);
+  if (USE_CHANNEL_REWARDS) {
+    client.say(chan, `@${username} 🌿 Welcome! Channel rewards are enabled — redeem the "Get a Seed" reward to start. Your petal balance: ${viewer.petals}🌸`);
+    return;
+  }
+  // One-shot — viewers can only claim starter petals once per account, even
+  // if they've spent everything they had. Earn more by harvesting (or being
+  // active in chat when someone else harvests — payouts are channel-wide).
+  if (db.hasClaimedStarter(username)) {
+    client.say(chan,
+      `@${username} 🌸 You've already claimed your starter petals! Balance: ${viewer.petals}🌸. Earn more by harvesting flowers — payouts are shared with everyone in chat.`
+    );
+    return;
+  }
+  db.addPetals(username, STARTER_PETALS);
+  db.markStarterClaimed(username);
+  client.say(chan,
+    `@${username} 🌱 Welcome to the garden! Here are ${STARTER_PETALS}🌸 to get you started. Try !getseed to grow your first plant.`
+  );
+}
 
 // ─── Channel Point Reward handler ────────────────────────────────────────────
 // tmi.js fires 'redeem' for channel point redemptions on the PubSub/EventSub path.
@@ -179,6 +278,9 @@ function rememberMessageId(id) {
 
 client.on('message', (chan, userstate, message, self) => {
   if (self) return;
+
+  // Channel reward path is only active in channel-rewards mode
+  if (!USE_CHANNEL_REWARDS) return;
 
   const rewardId = userstate['custom-reward-id'];
   if (!rewardId) return;
@@ -206,213 +308,325 @@ client.on('message', (chan, userstate, message, self) => {
   handleReward(chan, username, rewardId, message);
 });
 
-// Returns true if the viewer's held seed is valid (and they're blocked from getting another).
-// If the held seed is stale (plant removed from JSON), clears it and returns false so the reward proceeds.
-function blockIfHoldingValidSeed(chan, username, viewer) {
-  if (!viewer.held_seed) return false;
+// ─── Game actions ────────────────────────────────────────────────────────────
+// Each performXxx() encapsulates the logic for one action and returns
+//   { ok: bool, messages: string[] }
+// Both the channel-reward path and the petals-mode chat-command path call
+// these so the behavior stays identical regardless of how the action was
+// triggered. Messages are not posted by the action — the caller posts them.
+
+// Returns { stale: bool, blocked: bool, blockMessage?: string }
+// If held seed is stale (plant removed from JSON), clears it silently and
+// signals the caller to post a friendly note that the action proceeds.
+function checkHeldSeed(username) {
+  const viewer = db.getViewer(username);
+  if (!viewer.held_seed) return { stale: false, blocked: false };
   const existing = getPlant(viewer.held_seed);
   if (!existing) {
     db.setHeldSeed(username, null);
-    client.say(chan, `@${username} 🍃 (Your old seed was no longer available — released.)`);
-    return false;
+    return { stale: true, blocked: false };
   }
-  client.say(chan,
-    `@${username} 🌱 You already have a ${existing.emoji} ${existing.name}! Use !plant or !discard it first.`
-  );
-  return true;
+  return {
+    stale: false,
+    blocked: true,
+    blockMessage: `@${username} 🌱 You already have a ${existing.emoji} ${existing.name}! Use !plant or !discard it first.`,
+  };
+}
+
+// Tier options:
+//   'basic'    → 60% common / 30% uncommon / 10% rare (default)
+//   'uncommon' → 75% uncommon / 25% rare (no commons)
+//   'rare'     → 100% rare
+// Legacy `{ rare: true }` kept working for backward compatibility.
+function performGetSeed(username, options = {}) {
+  const tier = options.tier || (options.rare ? 'rare' : 'basic');
+
+  const seedCheck = checkHeldSeed(username);
+  if (seedCheck.blocked) return { ok: false, messages: [seedCheck.blockMessage] };
+
+  const messages = [];
+  if (seedCheck.stale) messages.push(`@${username} 🍃 (Your old seed was no longer available — released.)`);
+
+  let rarityArg;
+  if (tier === 'rare')          rarityArg = 'rare';
+  else if (tier === 'uncommon') rarityArg = { uncommon: 0.75, rare: 0.25 };
+  else                          rarityArg = null; // basic
+
+  const seed = rollSeed(rarityArg);
+  db.setHeldSeed(username, seed.id);
+  // Receiving a seed counts as having started the game — flips the eligibility
+  // flag so the user can share in future harvest payouts.
+  db.markStarterClaimed(username);
+
+  if (tier === 'rare') {
+    messages.push(`@${username} 🌟 You received a RARE ${seed.emoji} ${seed.name} seed! So lucky! Use !plant <slot> to plant it. ✨`);
+  } else if (tier === 'uncommon') {
+    if (seed.rarity === 'rare') {
+      messages.push(`@${username} ✨ Lucky roll! Your uncommon seed bag yielded a RARE ${seed.emoji} ${seed.name}! Use !plant <slot> to plant it. 🌟`);
+    } else {
+      messages.push(`@${username} 🍀 You received an uncommon ${seed.emoji} ${seed.name} seed! Use !plant <slot> to plant it. 🌿`);
+    }
+  } else {
+    messages.push(`@${username} 🎁 You received a ${seed.emoji} ${seed.name} seed (${seed.rarity})! Use !plant <slot> to plant it. 🌿`);
+  }
+
+  if (seed.fact) messages.push(`📖 Fun fact: ${seed.fact}`);
+  return { ok: true, messages, seed };
+}
+
+function performWater(username, message) {
+  const slots = db.getAllSlots();
+  const slotCount = db.getGardenSlotCount();
+  const waterable = slots.filter(s => {
+    if (!s.plant_id) return false;
+    const info = getGrowthInfo(s);
+    return info && !info.isBloom;
+  });
+
+  if (!waterable.length) {
+    return { ok: false, messages: [`@${username} 🌿 No plants need watering right now! Try harvesting bloomed ones 🌺`] };
+  }
+
+  let targetSlot;
+  const hasText = message && message.trim().length > 0;
+  const parsed = extractSlot(message, slotCount);
+  if (hasText && !parsed.ok) {
+    return { ok: false, messages: [`@${username} ❌ Invalid slot. Use a whole number between 1 and ${slotCount}, or leave blank to auto-pick.`] };
+  }
+  if (parsed.ok) {
+    const requested = db.getSlot(parsed.slot);
+    if (!requested || !requested.plant_id) {
+      return { ok: false, messages: [`@${username} 🪨 Slot ${parsed.slot} is empty!`] };
+    }
+    const reqInfo = getGrowthInfo(requested);
+    if (reqInfo.isBloom) {
+      return { ok: false, messages: [`@${username} 🌺 Slot ${parsed.slot} is already blooming! Harvest it instead.`] };
+    }
+    targetSlot = requested;
+  } else {
+    let lowestPct = Infinity;
+    for (const s of waterable) {
+      const info = getGrowthInfo(s);
+      const needed = getEffectiveWatersNeeded(s.slot, info.watersNeeded);
+      const pct = needed > 0 ? info.watersDone / needed : 1;
+      if (pct < lowestPct) {
+        lowestPct = pct;
+        targetSlot = s;
+      }
+    }
+  }
+
+  const tonic = db.getActiveEffect(username, 'growth_tonic', targetSlot.slot);
+  const waterAmount = tonic ? 3 : 1;
+  if (tonic) db.consumeEffect(tonic.id);
+
+  db.waterSlot(targetSlot.slot, waterAmount);
+  db.recordWater(username);
+
+  let updatedSlot = db.getSlot(targetSlot.slot);
+  let info = getGrowthInfo(updatedSlot);
+  const needed = getEffectiveWatersNeeded(targetSlot.slot, info.watersNeeded);
+
+  let advanceMsg = '';
+  while (!info.isBloom && updatedSlot.waters_done >= needed) {
+    db.advanceStage(targetSlot.slot);
+    updatedSlot = db.getSlot(targetSlot.slot);
+    info = getGrowthInfo(updatedSlot);
+    if (info.isBloom) {
+      advanceMsg = ` 🌺 ${info.plant.name} is BLOOMING! Time to harvest!`;
+    } else {
+      advanceMsg = ` ✨ It grew to ${['Seed', 'Sprout', 'Budding', 'Blooming'][info.stage]}!`;
+    }
+  }
+
+  const tonicMsg = waterAmount > 1 ? ` (Growth Tonic: x${waterAmount}💧)` : '';
+  return {
+    ok: true,
+    messages: [`@${username} 💧 Watered slot ${targetSlot.slot}!${tonicMsg}${advanceMsg} [${formatSlot(updatedSlot)}]`],
+  };
+}
+
+function performHarvest(username, message) {
+  const slotCount = db.getGardenSlotCount();
+  const slots = db.getAllSlots();
+
+  let targetSlotNum;
+  const hasText = message && message.trim().length > 0;
+  const parsed = extractSlot(message, slotCount);
+  if (hasText && !parsed.ok) {
+    return { ok: false, messages: [`@${username} ❌ Invalid slot. Use a whole number between 1 and ${slotCount}, or leave blank to auto-pick.`] };
+  }
+  if (parsed.ok) {
+    const requested = db.getSlot(parsed.slot);
+    if (!requested || !requested.plant_id) {
+      return { ok: false, messages: [`@${username} 🪨 Slot ${parsed.slot} is empty — nothing to harvest!`] };
+    }
+    const reqInfo = getGrowthInfo(requested);
+    if (!reqInfo) {
+      return { ok: false, messages: [`@${username} ❓ Slot ${parsed.slot} has an unknown plant. Please ask a mod to clear it.`] };
+    }
+    if (!reqInfo.isBloom) {
+      return { ok: false, messages: [`@${username} 🌿 Slot ${parsed.slot} isn't blooming yet! Keep watering 💧`] };
+    }
+    targetSlotNum = parsed.slot;
+  } else {
+    const bloomed = slots.find(s => {
+      if (!s.plant_id) return false;
+      const info = getGrowthInfo(s);
+      return info && info.isBloom;
+    });
+    if (!bloomed) {
+      return { ok: false, messages: [`@${username} 🌸 No bloomed plants ready to harvest! Keep watering 💧`] };
+    }
+    targetSlotNum = bloomed.slot;
+  }
+
+  const slotRow = db.getSlot(targetSlotNum);
+  const info = getGrowthInfo(slotRow);
+  const { plant } = info;
+  const petals = plant.harvestPetals;
+
+  // The act of harvesting counts as participating, so make sure the harvester
+  // is flagged as having started.
+  if (!isIgnored(username)) db.markStarterClaimed(username);
+
+  // Channel-wide reward: every recently-active chatter shares the petals.
+  // In petals-only mode, only viewers who have started the game (claimed
+  // starter petals or otherwise engaged) are eligible — lurkers without an
+  // account don't drain the pool. In channel-rewards mode there is no !startgarden
+  // gate, so the filter doesn't apply. Ignored users (bots) are always out.
+  let recipients = getActiveViewers().filter(u => !isIgnored(u));
+  if (!USE_CHANNEL_REWARDS) {
+    recipients = recipients.filter(u => db.hasClaimedStarter(u));
+  }
+  if (!isIgnored(username) && !recipients.includes(username.toLowerCase())) {
+    recipients.push(username.toLowerCase());
+  }
+  const credited = db.addPetalsToMany(recipients, petals);
+  db.clearSlot(targetSlotNum);
+
+  const viewer = db.getViewer(username);
+  const others = Math.max(0, credited - 1);
+  const sharedNote = others > 0
+    ? ` Shared with ${others} other gardener${others === 1 ? '' : 's'} (everyone gets +${petals}🌸).`
+    : '';
+  return {
+    ok: true,
+    messages: [
+      `@${username} 🌺 Harvested a ${plant.emoji} ${plant.name} (${rarityLabel(plant.rarity)})! +${petals}🌸 to you (total: ${viewer.petals}🌸).${sharedNote} Slot ${targetSlotNum} is empty and ready for a new seed!`,
+    ],
+  };
+}
+
+function performExpand(username) {
+  const current = db.getGardenSlotCount();
+  if (current >= MAX_SLOTS) {
+    return { ok: false, messages: [`@${username} 🌿 The garden is already at maximum size (${MAX_SLOTS} slots)!`] };
+  }
+  const newCount = current + 1;
+  db.setGardenSlotCount(newCount);
+  return {
+    ok: true,
+    messages: [`@${username} 🌱 The garden expanded! We now have ${newCount} plot${newCount !== 1 ? 's' : ''}! 🎉`],
+  };
+}
+
+function performFertilize(username, message) {
+  const slotCount = db.getGardenSlotCount();
+
+  // Slot is required and must be a strict positive integer in range
+  const parsed = extractSlot(message, slotCount);
+  if (!parsed.ok) {
+    return {
+      ok: false,
+      messages: [`@${username} 🌱 Pick a slot to fertilize (1-${slotCount}). Try: !buy fertilize <slot>`],
+    };
+  }
+  const slot = parsed.slot;
+  const slotRow = db.getSlot(slot);
+
+  // Must be empty — fertilizer is for the NEXT plant, not the current one
+  if (slotRow && slotRow.plant_id) {
+    return {
+      ok: false,
+      messages: [`@${username} 🌿 Slot ${slot} already has a plant! Fertilizer can only be applied to empty plots so it benefits the next planting.`],
+    };
+  }
+
+  // Re-applying on an already-fertilized empty slot is a no-op (waste of petals)
+  if (db.hasSlotBuff(slot, 'fertilizer')) {
+    return {
+      ok: false,
+      messages: [`@${username} ✨ Slot ${slot} is already fertilized — wait for someone to plant there first!`],
+    };
+  }
+
+  db.addSlotBuff(slot, 'fertilizer', username);
+  return {
+    ok: true,
+    messages: [`@${username} 🌱 Fertilizer applied to slot ${slot}! The next plant there will need HALF the waters at every stage. ✨`],
+  };
+}
+
+// ─── Chat command helper for petals mode ─────────────────────────────────────
+// Charges petals up front (if action succeeds), runs the action, posts messages.
+// On failure (validation or affordability) no petals are deducted.
+
+function runPetalCostAction(chan, username, label, cost, actionFn) {
+  if (cost > 0) {
+    const viewer = db.getViewer(username);
+    if (viewer.petals < cost) {
+      client.say(chan, `@${username} 💸 Need ${cost}🌸 to ${label} (you have ${viewer.petals}🌸). Earn more by harvesting a flower (or being in chat when someone else does).`);
+      return;
+    }
+  }
+  const result = actionFn();
+  for (const m of result.messages) client.say(chan, m);
+  if (result.ok && cost > 0) {
+    db.deductPetals(username, cost);
+    const remaining = db.getViewer(username).petals;
+    client.say(chan, `@${username} 💸 -${cost}🌸 (balance: ${remaining}🌸)`);
+  }
+}
+
+// Context handed to cmdShop/cmdBuy so the shop can render the right prices,
+// dispatch action items via the same perform functions used elsewhere, and
+// charge petals consistently. Built per-call so dynamic costs (like expand,
+// which scales quadratically with garden size) are always fresh.
+function buildShopContext() {
+  return {
+    useChannelRewards: USE_CHANNEL_REWARDS,
+    costs: {
+      seed:          SEED_COST,
+      uncommon_seed: UNCOMMON_SEED_COST,
+      rare_seed:     RARE_SEED_COST,
+      water:         WATER_COST,
+      harvest:       0,                 // harvest is the payout, no cost
+      expand:        getExpandCost(),   // dynamic — depends on current garden size
+      fertilize:     FERTILIZE_COST,
+    },
+    performAction: {
+      seed:          (username, msg) => performGetSeed(username),
+      uncommon_seed: (username, msg) => performGetSeed(username, { tier: 'uncommon' }),
+      rare_seed:     (username, msg) => performGetSeed(username, { tier: 'rare' }),
+      water:         (username, msg) => performWater(username, msg),
+      harvest:       (username, msg) => performHarvest(username, msg),
+      expand:        (username, msg) => performExpand(username),
+      fertilize:     (username, msg) => performFertilize(username, msg),
+    },
+    runPetalCostAction,
+  };
 }
 
 function handleReward(chan, username, rewardId, message) {
-  // Get a random seed
-  if (rewardId === GET_SEED_REWARD_ID) {
-    const viewer = db.getViewer(username);
-    if (blockIfHoldingValidSeed(chan, username, viewer)) return;
-    const seed = rollSeed();
-    db.setHeldSeed(username, seed.id);
-    client.say(chan,
-      `@${username} 🎁 You received a ${seed.emoji} ${seed.name} seed (${seed.rarity})! Use !plant <slot> to plant it. 🌿`
-    );
-    if (seed.fact) client.say(chan, `📖 Fun fact: ${seed.fact}`);
-    return;
-  }
-
-  // Get a guaranteed rare seed
-  if (rewardId === RARE_SEED_REWARD_ID) {
-    const viewer = db.getViewer(username);
-    if (blockIfHoldingValidSeed(chan, username, viewer)) return;
-    const seed = rollSeed('rare');
-    db.setHeldSeed(username, seed.id);
-    client.say(chan,
-      `@${username} 🌟 You received a RARE ${seed.emoji} ${seed.name} seed! So lucky! Use !plant <slot> to plant it. ✨`
-    );
-    if (seed.fact) client.say(chan, `📖 Fun fact: ${seed.fact}`);
-    return;
-  }
-
-  // Water a plant
-  if (rewardId === WATER_REWARD_ID) {
-    const slots = db.getAllSlots();
-    const slotCount = db.getGardenSlotCount();
-    const waterable = slots.filter(s => {
-      if (!s.plant_id) return false;
-      const info = getGrowthInfo(s);
-      return info && !info.isBloom;
-    });
-
-    if (!waterable.length) {
-      client.say(chan, `@${username} 🌿 No plants need watering right now! Try harvesting bloomed ones 🌺`);
-      return;
-    }
-
-    let targetSlot;
-
-    // Parse an optional slot number from the redemption message
-    const hasText = message && message.trim().length > 0;
-    const parsed = extractSlot(message, slotCount);
-    if (hasText && !parsed.ok) {
-      client.say(chan, `@${username} ❌ Invalid slot in your message. Use a whole number between 1 and ${slotCount}, or leave blank to auto-pick.`);
-      return;
-    }
-    if (parsed.ok) {
-      const slotNum = parsed.slot;
-      const requested = db.getSlot(slotNum);
-      if (!requested || !requested.plant_id) {
-        client.say(chan, `@${username} 🪨 Slot ${slotNum} is empty!`);
-        return;
-      }
-      const reqInfo = getGrowthInfo(requested);
-      if (reqInfo.isBloom) {
-        client.say(chan, `@${username} 🌺 Slot ${slotNum} is already blooming! Redeem the Harvest reward to collect it.`);
-        return;
-      }
-      targetSlot = requested;
-    } else {
-      let lowestPct = Infinity;
-      for (const s of waterable) {
-        const info = getGrowthInfo(s);
-        const needed = getWatersNeededWithUpgrade(info.watersNeeded);
-        const pct = needed > 0 ? info.watersDone / needed : 1;
-        if (pct < lowestPct) {
-          lowestPct = pct;
-          targetSlot = s;
-        }
-      }
-    }
-
-    const tonic = db.getActiveEffect(username, 'growth_tonic', targetSlot.slot);
-    const waterAmount = tonic ? 3 : 1;
-    if (tonic) db.consumeEffect(tonic.id);
-
-    db.waterSlot(targetSlot.slot, waterAmount);
-    db.recordWater(username);
-
-    let updatedSlot = db.getSlot(targetSlot.slot);
-    let info = getGrowthInfo(updatedSlot);
-    const needed = getWatersNeededWithUpgrade(info.watersNeeded);
-
-    let advanceMsg = '';
-    while (!info.isBloom && updatedSlot.waters_done >= needed) {
-      db.advanceStage(targetSlot.slot);
-      updatedSlot = db.getSlot(targetSlot.slot);
-      info = getGrowthInfo(updatedSlot);
-      if (info.isBloom) {
-        advanceMsg = ` 🌺 ${info.plant.name} is BLOOMING! Redeem the Harvest reward to collect it!`;
-      } else {
-        advanceMsg = ` ✨ It grew to ${['Seed', 'Sprout', 'Budding', 'Blooming'][info.stage]}!`;
-      }
-    }
-
-    const tonicMsg = waterAmount > 1 ? ` (Growth Tonic: x${waterAmount}💧)` : '';
-    client.say(chan, `@${username} 💧 Watered slot ${targetSlot.slot}!${tonicMsg}${advanceMsg} [${formatSlot(updatedSlot)}]`);
-    return;
-  }
-
-  // Harvest a bloomed plant
-  if (rewardId === HARVEST_REWARD_ID) {
-    const slotCount = db.getGardenSlotCount();
-    const slots = db.getAllSlots();
-
-    let targetSlotNum;
-
-    // Optional slot from redemption text — pick a specific bloomed plant
-    const hasText = message && message.trim().length > 0;
-    const parsed = extractSlot(message, slotCount);
-    if (hasText && !parsed.ok) {
-      client.say(chan, `@${username} ❌ Invalid slot in your message. Use a whole number between 1 and ${slotCount}, or leave blank to auto-pick.`);
-      return;
-    }
-    if (parsed.ok) {
-      const requested = db.getSlot(parsed.slot);
-      if (!requested || !requested.plant_id) {
-        client.say(chan, `@${username} 🪨 Slot ${parsed.slot} is empty — nothing to harvest!`);
-        return;
-      }
-      const reqInfo = getGrowthInfo(requested);
-      if (!reqInfo) {
-        client.say(chan, `@${username} ❓ Slot ${parsed.slot} has an unknown plant. Please ask a mod to clear it.`);
-        return;
-      }
-      if (!reqInfo.isBloom) {
-        client.say(chan, `@${username} 🌿 Slot ${parsed.slot} isn't blooming yet! Keep watering 💧`);
-        return;
-      }
-      targetSlotNum = parsed.slot;
-    } else {
-      const bloomed = slots.find(s => {
-        if (!s.plant_id) return false;
-        const info = getGrowthInfo(s);
-        return info && info.isBloom;
-      });
-      if (!bloomed) {
-        client.say(chan, `@${username} 🌸 No bloomed plants ready to harvest! Keep watering 💧`);
-        return;
-      }
-      targetSlotNum = bloomed.slot;
-    }
-
-    const slotRow = db.getSlot(targetSlotNum);
-    const info = getGrowthInfo(slotRow);
-    const { plant } = info;
-    const petals = plant.harvestPetals;
-
-    // Channel-wide reward: every recently-active chatter (the harvester
-    // included) gets the full petal payout. The harvester is added explicitly
-    // in case they haven't chatted within the activity window. Ignored
-    // users (configured bots) are filtered out as a final safety check.
-    const recipients = getActiveViewers().filter(u => !isIgnored(u));
-    if (!isIgnored(username) && !recipients.includes(username.toLowerCase())) {
-      recipients.push(username.toLowerCase());
-    }
-    const credited = db.addPetalsToMany(recipients, petals);
-    db.clearSlot(targetSlotNum);
-
-    const viewer = db.getViewer(username);
-    const others = Math.max(0, credited - 1);
-    const sharedNote = others > 0
-      ? ` Shared with ${others} other gardener${others === 1 ? '' : 's'} (everyone gets +${petals}🌸).`
-      : '';
-    client.say(chan,
-      `@${username} 🌺 Harvested a ${plant.emoji} ${plant.name} (${rarityLabel(plant.rarity)})! +${petals}🌸 to you (total: ${viewer.petals}🌸).${sharedNote} Slot ${targetSlotNum} is empty and ready for a new seed!`
-    );
-    return;
-  }
-
-  // Expand garden plot
-  if (rewardId === EXPAND_PLOT_REWARD_ID) {
-    const current = db.getGardenSlotCount();
-    if (current >= MAX_SLOTS) {
-      client.say(chan,
-        `@${username} 🌿 The garden is already at maximum size (${MAX_SLOTS} slots)! Your channel points have been refunded.`
-      );
-      return;
-    }
-    const newCount = current + 1;
-    db.setGardenSlotCount(newCount);
-    client.say(chan,
-      `@${username} 🌱 The garden expanded! We now have ${newCount} plot${newCount !== 1 ? 's' : ''}! 🎉`
-    );
-    return;
-  }
+  let result;
+  if (rewardId === GET_SEED_REWARD_ID)         result = performGetSeed(username);
+  else if (rewardId === RARE_SEED_REWARD_ID)   result = performGetSeed(username, { rare: true });
+  else if (rewardId === WATER_REWARD_ID)       result = performWater(username, message);
+  else if (rewardId === HARVEST_REWARD_ID)     result = performHarvest(username, message);
+  else if (rewardId === EXPAND_PLOT_REWARD_ID) result = performExpand(username);
+  if (!result) return;
+  for (const m of result.messages) client.say(chan, m);
 }
 
 // ─── Connect ──────────────────────────────────────────────────────────────────
@@ -428,18 +642,25 @@ client.on('notice', (chan, msgid, message) => console.log(`📨 NOTICE [${msgid}
 
 client.connect().then(() => {
   console.log(`🌿 CozyGardenBot connected to ${channel}`);
-  console.log(`   Commands: !garden !seed !plant !discard !petals !gardeners !shop !buy !gardenhelp`);
+  console.log(`   Mode: ${USE_CHANNEL_REWARDS ? 'CHANNEL REWARDS (Twitch points trigger actions)' : 'PETALS-ONLY (chat commands cost petals)'}`);
   console.log(`   Ignored users (no petals/activity): ${[...IGNORED_USERS].join(', ') || '(none)'}`);
 
-  // Announce in chat with the command + reward summary
-  client.say(channel,
-    "🌿 CozyGardenBot is awake! Commands: !garden [slot] | !seed | !plant [slot] | !discard | !petals | !gardeners | !shop | !buy <item> | !gardenhelp — Channel Rewards: Get Seed | Water Plant | Harvest Plant | Expand Garden 🌸"
-  ).catch(err => console.warn('   (Could not post welcome message:', err && err.message, ')'));
-  console.log(`   Channel Rewards: GET_SEED="${GET_SEED_REWARD_ID||'(not set)'}" RARE="${RARE_SEED_REWARD_ID||'(not set)'}" WATER="${WATER_REWARD_ID||'(not set)'}" HARVEST="${HARVEST_REWARD_ID||'(not set)'}" EXPAND="${EXPAND_PLOT_REWARD_ID||'(not set)'}"`);
-  const unsetRewards = [GET_SEED_REWARD_ID, RARE_SEED_REWARD_ID, WATER_REWARD_ID, HARVEST_REWARD_ID, EXPAND_PLOT_REWARD_ID].some(id => !id);
-  if (unsetRewards) {
-    console.log(`   💡 Redeem a channel point reward and the bot will print its ID so you can add it to .env`);
+  if (USE_CHANNEL_REWARDS) {
+    console.log(`   Channel Rewards: GET_SEED="${GET_SEED_REWARD_ID||'(not set)'}" RARE="${RARE_SEED_REWARD_ID||'(not set)'}" WATER="${WATER_REWARD_ID||'(not set)'}" HARVEST="${HARVEST_REWARD_ID||'(not set)'}" EXPAND="${EXPAND_PLOT_REWARD_ID||'(not set)'}"`);
+    const unsetRewards = [GET_SEED_REWARD_ID, RARE_SEED_REWARD_ID, WATER_REWARD_ID, HARVEST_REWARD_ID, EXPAND_PLOT_REWARD_ID].some(id => !id);
+    if (unsetRewards) {
+      console.log(`   💡 Redeem a channel point reward and the bot will print its ID so you can add it to .env`);
+    }
+  } else {
+    console.log(`   Petal costs: seed=${SEED_COST} rare=${RARE_SEED_COST} water=${WATER_COST} expand=${getExpandCost()} (base=${EXPAND_COST_BASE}, quadratic) | starter=${STARTER_PETALS}`);
   }
+
+  // Announce in chat with the command + reward summary, mode-aware
+  const welcome = USE_CHANNEL_REWARDS
+    ? "🌿 CozyGardenBot is awake! Commands: !garden [slot] | !seed | !plant [slot] | !discard | !petals | !gardeners | !shop | !buy <item> | !gardenhelp — Channel Rewards: Get Seed | Water Plant | Harvest Plant | Expand Garden 🌸"
+    : `🌿 CozyGardenBot is awake! New here? Type !startgarden to claim ${STARTER_PETALS}🌸 starter petals. Spend them: !buy seed (${SEED_COST}🌸) → !plant → !water [slot] (${WATER_COST}🌸) → !harvest. Type !gardenhelp for the full list. 🌸`;
+  client.say(channel, welcome)
+    .catch(err => console.warn('   (Could not post welcome message:', err && err.message, ')'));
 }).catch(err => {
   console.error('❌  Failed to connect to Twitch IRC.');
   console.error('    Reason:', err && err.message ? err.message : err);

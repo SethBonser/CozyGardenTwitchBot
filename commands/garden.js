@@ -8,7 +8,7 @@ const {
   progressBar,
   rarityLabel,
   getCooldownMs,
-  getWatersNeededWithUpgrade,
+  getEffectiveWatersNeeded,
   parseSlot,
   STAGE_EMOJIS,
   STAGE_NAMES,
@@ -37,7 +37,7 @@ function cmdGarden(client, channel, userstate, args) {
       return client.say(channel, `@${username} ❓ Slot ${slotNum} has an unknown plant.`);
     }
     const { plant, stage, isBloom, watersDone } = info;
-    const needed = isBloom ? 0 : getWatersNeededWithUpgrade(info.watersNeeded);
+    const needed = isBloom ? 0 : getEffectiveWatersNeeded(slotNum, info.watersNeeded);
     const stageEmoji = STAGE_EMOJIS[Math.min(stage, 3)];
     const stageName  = STAGE_NAMES[Math.min(stage, 3)];
     const plantedBy = slot.planted_by ? `planted by ${slot.planted_by}` : 'planted by ?';
@@ -114,7 +114,7 @@ function cmdWater(client, channel, userstate, args) {
     let lowestPct = Infinity;
     for (const s of waterable) {
       const info = getGrowthInfo(s);
-      const needed = getWatersNeededWithUpgrade(info.watersNeeded);
+      const needed = getEffectiveWatersNeeded(s.slot, info.watersNeeded);
       const pct = needed > 0 ? info.watersDone / needed : 1;
       if (pct < lowestPct) {
         lowestPct = pct;
@@ -137,7 +137,7 @@ function cmdWater(client, channel, userstate, args) {
   // Re-fetch to check stage advancement
   let updatedSlot = db.getSlot(targetSlot.slot);
   let info = getGrowthInfo(updatedSlot);
-  const needed = getWatersNeededWithUpgrade(info.watersNeeded);
+  const needed = getEffectiveWatersNeeded(targetSlot.slot, info.watersNeeded);
 
   let advanceMsg = '';
   while (!info.isBloom && updatedSlot.waters_done >= needed) {

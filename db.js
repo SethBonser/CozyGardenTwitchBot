@@ -29,13 +29,15 @@ db.exec(`
     planted_at  INTEGER
   );
 
-  -- Viewer profiles: petals balance, seed held, water cooldown tracking
+  -- Viewer profiles: petals balance, seed held, water cooldown tracking,
+  -- and a one-shot flag for whether they've already claimed starter petals
   CREATE TABLE IF NOT EXISTS viewers (
-    username      TEXT PRIMARY KEY,
-    petals        INTEGER DEFAULT 0,
-    held_seed     TEXT,
-    last_watered  INTEGER DEFAULT 0,
-    waters_given  INTEGER DEFAULT 0
+    username        TEXT PRIMARY KEY,
+    petals          INTEGER DEFAULT 0,
+    held_seed       TEXT,
+    last_watered    INTEGER DEFAULT 0,
+    waters_given    INTEGER DEFAULT 0,
+    starter_claimed INTEGER DEFAULT 0
   );
 
   -- Stream-wide upgrades
@@ -60,11 +62,42 @@ db.exec(`
     key   TEXT PRIMARY KEY,
     value TEXT
   );
+
+  -- Slot-bound buffs (e.g. fertilizer). Persist on a slot regardless of who
+  -- planted next or who applied the buff. Cleared automatically when the slot
+  -- is cleared (harvest / discard). Composite key allows multiple distinct
+  -- buff types per slot in the future.
+  CREATE TABLE IF NOT EXISTS slot_buffs (
+    slot       INTEGER NOT NULL,
+    buff       TEXT NOT NULL,
+    applied_by TEXT,
+    applied_at INTEGER,
+    PRIMARY KEY (slot, buff)
+  );
 `);
 
 // Insert default config if not present
 const initConfig = db.prepare(`INSERT OR IGNORE INTO config (key, value) VALUES (?, ?)`);
 initConfig.run('garden_slots', '3');
+
+// ─── Migrations ───────────────────────────────────────────────────────────────
+// Add starter_claimed column to existing databases that pre-date the flag.
+// SQLite throws "duplicate column name" if it's already there — safe to swallow.
+try {
+  db.prepare(`ALTER TABLE viewers ADD COLUMN starter_claimed INTEGER DEFAULT 0`).run();
+} catch (e) {
+  // Column already exists — fresh DB or already migrated
+}
+
+// One-time backfill: any existing viewer with prior activity (petals, a held
+// seed, water history) is treated as already-claimed so they can't double-dip
+// when the !startgarden flag arrives. New viewers default to starter_claimed = 0.
+db.prepare(`
+  UPDATE viewers
+  SET starter_claimed = 1
+  WHERE starter_claimed = 0
+    AND (petals > 0 OR held_seed IS NOT NULL OR last_watered > 0 OR waters_given > 0)
+`).run();
 
 // ─── Viewer helpers ────────────────────────────────────────────────────────────
 
@@ -119,6 +152,19 @@ function deductPetals(username, amount) {
 function setHeldSeed(username, seedId) {
   ensureViewer(username);
   db.prepare(`UPDATE viewers SET held_seed = ? WHERE username = ?`).run(seedId, username);
+}
+
+// One-shot starter petals tracking — used by !startgarden in petals-only mode so each
+// viewer can only claim STARTER_PETALS once per account, ever.
+function hasClaimedStarter(username) {
+  ensureViewer(username);
+  const row = db.prepare(`SELECT starter_claimed FROM viewers WHERE username = ?`).get(username);
+  return !!(row && row.starter_claimed === 1);
+}
+
+function markStarterClaimed(username) {
+  ensureViewer(username);
+  db.prepare(`UPDATE viewers SET starter_claimed = 1 WHERE username = ?`).run(username);
 }
 
 function recordWater(username) {
@@ -188,6 +234,34 @@ function advanceStage(slot) {
 
 function clearSlot(slot) {
   db.prepare(`DELETE FROM garden WHERE slot = ?`).run(slot);
+  // Slot-bound buffs (fertilizer, etc.) are tied to whatever plant occupies
+  // the slot. Clearing the slot ends their lifecycle.
+  db.prepare(`DELETE FROM slot_buffs WHERE slot = ?`).run(slot);
+  notify();
+}
+
+// ─── Slot-bound buffs ─────────────────────────────────────────────────────────
+
+function addSlotBuff(slot, buff, appliedBy) {
+  db.prepare(`
+    INSERT OR REPLACE INTO slot_buffs (slot, buff, applied_by, applied_at)
+    VALUES (?, ?, ?, ?)
+  `).run(slot, buff, appliedBy || null, Date.now());
+  notify();
+}
+
+function hasSlotBuff(slot, buff) {
+  if (slot == null) return false;
+  const row = db.prepare(`SELECT 1 FROM slot_buffs WHERE slot = ? AND buff = ?`).get(slot, buff);
+  return !!row;
+}
+
+function getSlotBuffs(slot) {
+  return db.prepare(`SELECT * FROM slot_buffs WHERE slot = ?`).all(slot);
+}
+
+function clearSlotBuff(slot, buff) {
+  db.prepare(`DELETE FROM slot_buffs WHERE slot = ? AND buff = ?`).run(slot, buff);
   notify();
 }
 
@@ -244,6 +318,8 @@ module.exports = {
   addPetalsToMany,
   deductPetals,
   setHeldSeed,
+  hasClaimedStarter,
+  markStarterClaimed,
   recordWater,
   getLastWatered,
   getWaterLeaderboard,
@@ -261,4 +337,8 @@ module.exports = {
   addEffect,
   getActiveEffect,
   consumeEffect,
+  addSlotBuff,
+  hasSlotBuff,
+  getSlotBuffs,
+  clearSlotBuff,
 };

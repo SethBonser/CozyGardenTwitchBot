@@ -3,6 +3,17 @@
 const db = require('../db');
 const { getPlant, rarityLabel, parseSlot } = require('../helpers');
 
+// Read mode + seed cost so error messages can point users at the right path
+// to get a seed (channel reward vs. !buy seed / !getseed).
+const USE_CHANNEL_REWARDS = String(process.env.USE_CHANNEL_REWARDS ?? 'true').toLowerCase() !== 'false';
+const SEED_COST = parseInt(process.env.SEED_COST || '30', 10);
+
+function noSeedHint() {
+  return USE_CHANNEL_REWARDS
+    ? 'Redeem the "Get a Seed" channel point reward to get one.'
+    : `Use !buy seed (${SEED_COST}🌸) or !buy rare seed to get one.`;
+}
+
 // If the viewer holds a seed that's no longer in plants.json, auto-discard so they aren't stuck.
 function clearStaleSeed(client, channel, viewer) {
   if (!viewer.held_seed) return false;
@@ -21,7 +32,7 @@ function cmdSeed(client, channel, userstate) {
   const viewer = db.getViewer(userstate.username);
   if (!viewer.held_seed) {
     return client.say(channel,
-      `@${userstate.username} 🌱 You don't have a seed! Redeem the "Get a Seed" channel point reward to get one.`
+      `@${userstate.username} 🌱 You don't have a seed! ${noSeedHint()}`
     );
   }
   if (clearStaleSeed(client, channel, viewer)) return;
@@ -43,7 +54,7 @@ function cmdPlant(client, channel, userstate, args) {
 
   if (!viewer.held_seed) {
     return client.say(channel,
-      `@${username} 🌱 You don't have a seed to plant! Redeem "Get a Seed" to receive one.`
+      `@${username} 🌱 You don't have a seed to plant! ${noSeedHint()}`
     );
   }
 

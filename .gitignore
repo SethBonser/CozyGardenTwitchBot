@@ -23,6 +23,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Local-only working notes (issue lists, todo files, etc.)
+current_issues.txt
+sprites-to-do.txt
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db
@@ -30,3 +34,4 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+.claude/

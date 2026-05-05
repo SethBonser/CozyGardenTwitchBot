@@ -4,50 +4,90 @@ const db = require('../db');
 const { fuzzyMatchShopItem, getPlant } = require('../helpers');
 
 // ─── Shop item definitions ────────────────────────────────────────────────────
+// Action items reuse the perform functions injected by index.js via `ctx`.
+// In channel-rewards mode, !buy <action> simply redirects to the matching
+// channel point reward instead of charging petals.
+
+// Shop is split into four clear categories for easier browsing.
+const CATEGORIES = [
+  { id: 'seeds',   label: '🌱 Seeds' },
+  { id: 'garden',  label: '🌿 Garden Actions' },
+  { id: 'tools',   label: '🪣 Watering Tools' },
+  { id: 'boosts',  label: '🧪 Boosts' },
+];
 
 const SHOP_CATALOG = {
-  copper_can: {
-    id: 'copper_can',
-    name: 'Copper Can',
-    emoji: '🪣',
-    cost: 400,
-    type: 'upgrade',
-    description: 'Stream upgrade: Reduces !water cooldown to 8 minutes',
-    detail: 'Cooldown: 10min → 8min',
+  // ── 🌱 Seeds (action, cost from ctx.costs at runtime) ───────────────────────
+  seed: {
+    id: 'seed', name: 'Get a Seed', emoji: '🎁',
+    type: 'action', category: 'seeds', actionId: 'seed', rewardName: 'Get a Seed',
+    description: 'Receive a random seed (60% common / 30% uncommon / 10% rare)',
   },
-  silver_can: {
-    id: 'silver_can',
-    name: 'Silver Can',
-    emoji: '🪣✨',
-    cost: 800,
-    type: 'upgrade',
-    description: 'Stream upgrade: Reduces !water cooldown to 6 minutes',
-    detail: 'Cooldown: → 6min (stacks over Copper Can)',
+  uncommon_seed: {
+    id: 'uncommon_seed', name: 'Uncommon Seed', emoji: '🍀',
+    type: 'action', category: 'seeds', actionId: 'uncommon_seed', rewardName: 'Uncommon Seed',
+    petalsOnly: true,  // Petals-only — there is no channel reward equivalent
+    description: 'Receive an uncommon seed (75% uncommon / 25% rare — never common)',
   },
+  rare_seed: {
+    id: 'rare_seed', name: 'Rare Seed', emoji: '🌟',
+    type: 'action', category: 'seeds', actionId: 'rare_seed', rewardName: 'Rare Seed',
+    description: 'Receive a guaranteed rare seed',
+  },
+
+  // ── 🌿 Garden actions (action, cost from ctx.costs at runtime) ─────────────
+  water: {
+    id: 'water', name: 'Water Plant', emoji: '💧',
+    type: 'action', category: 'garden', actionId: 'water', rewardName: 'Water Plant',
+    description: 'Water a plant (auto-picks lowest progress; pass a slot number to target)',
+  },
+  harvest: {
+    id: 'harvest', name: 'Harvest', emoji: '🌺',
+    type: 'action', category: 'garden', actionId: 'harvest', rewardName: 'Harvest Plant',
+    description: 'Harvest a bloomed plant (free — it\'s the payout)',
+  },
+  expand: {
+    id: 'expand', name: 'Expand Garden', emoji: '🌿',
+    type: 'action', category: 'garden', actionId: 'expand', rewardName: 'Expand Garden',
+    description: 'Add one slot to the shared garden',
+  },
+  fertilize: {
+    id: 'fertilize', name: 'Fertilize', emoji: '🌱',
+    type: 'action', category: 'garden', actionId: 'fertilize', rewardName: 'Fertilize',
+    petalsOnly: true,  // Petals only — no channel reward equivalent
+    description: 'Apply fertilizer to an empty slot — the next plant there grows with HALF the waters needed at every stage. Use !buy fertilize <slot>',
+  },
+
+  // ── 🪣 Watering Tools (one-time stream-wide upgrades) ──────────────────────
   compost_bin: {
-    id: 'compost_bin',
-    name: 'Compost Bin',
-    emoji: '🪣🌿',
-    cost: 600,
-    type: 'upgrade',
+    id: 'compost_bin', name: 'Compost Bin', emoji: '🪣🌿',
+    cost: 600, type: 'upgrade', category: 'tools',
     description: 'Stream upgrade: All plants need 20% fewer waters per stage',
     detail: '-20% waters needed for all plants',
   },
+  copper_can: {
+    id: 'copper_can', name: 'Copper Can', emoji: '🪣',
+    cost: 400, type: 'upgrade', category: 'tools',
+    description: '(Vestigial) Stream upgrade — used to reduce a watering cooldown that no longer exists',
+    detail: 'vestigial — safe to ignore',
+  },
+  silver_can: {
+    id: 'silver_can', name: 'Silver Can', emoji: '🪣✨',
+    cost: 800, type: 'upgrade', category: 'tools',
+    description: '(Vestigial) Stream upgrade — see Copper Can. Requires Copper Can.',
+    detail: 'vestigial — safe to ignore',
+  },
+
+  // ── 🧪 Boosts (per-viewer single-use consumables) ──────────────────────────
   rain_cloud: {
-    id: 'rain_cloud',
-    name: 'Rain Cloud',
-    emoji: '🌧️',
-    cost: 200,
-    type: 'consumable',
+    id: 'rain_cloud', name: 'Rain Cloud', emoji: '🌧️',
+    cost: 200, type: 'consumable', category: 'boosts',
     description: 'Consumable: Instantly waters ALL occupied garden slots once',
     detail: 'Waters every plant in the garden',
   },
   growth_tonic: {
-    id: 'growth_tonic',
-    name: 'Growth Tonic',
-    emoji: '🧪',
-    cost: 150,
-    type: 'consumable',
+    id: 'growth_tonic', name: 'Growth Tonic', emoji: '🧪',
+    cost: 150, type: 'consumable', category: 'boosts',
     description: 'Consumable: Your next !water on a chosen slot counts as 3 waters',
     detail: 'Use !buy growth tonic <slot> to activate on a specific slot',
   },
@@ -55,34 +95,56 @@ const SHOP_CATALOG = {
 
 // ─── !shop ────────────────────────────────────────────────────────────────────
 
-function cmdShop(client, channel, userstate) {
-  const upgrades = Object.values(SHOP_CATALOG).filter(i => i.type === 'upgrade');
-  const consumables = Object.values(SHOP_CATALOG).filter(i => i.type === 'consumable');
+function cmdShop(client, channel, userstate, ctx = {}) {
+  const useChannelRewards = !!ctx.useChannelRewards;
+  const costs = ctx.costs || {};
 
-  const upgradeList = upgrades.map(i => {
-    const owned = db.isUpgradePurchased(i.id);
-    return `${i.emoji} ${i.name} ${i.cost}🌸${owned ? ' ✅' : ''}: ${i.detail}`;
-  }).join(' | ');
+  // Format a single shop entry into "<emoji> <name> <price>" depending on type
+  function formatItem(i) {
+    if (i.type === 'action') {
+      // petalsOnly actions show their petal price even in channel-rewards mode
+      if (useChannelRewards && !i.petalsOnly) return `${i.emoji} ${i.name} (channel reward)`;
+      const cost = costs[i.actionId];
+      const priceLabel = cost && cost > 0 ? `${cost}🌸` : 'free';
+      return `${i.emoji} ${i.name} ${priceLabel}`;
+    }
+    if (i.type === 'upgrade') {
+      const owned = db.isUpgradePurchased(i.id);
+      return `${i.emoji} ${i.name} ${i.cost}🌸${owned ? ' ✅' : ''}`;
+    }
+    // consumable
+    return `${i.emoji} ${i.name} ${i.cost}🌸`;
+  }
 
-  const consumableList = consumables.map(i =>
-    `${i.emoji} ${i.name} ${i.cost}🌸: ${i.detail}`
-  ).join(' | ');
+  // Build "<label>: item | item | item" for one category
+  function renderCategory(catId) {
+    const cat = CATEGORIES.find(c => c.id === catId);
+    const items = Object.values(SHOP_CATALOG).filter(i => i.category === catId);
+    return `${cat.label}: ${items.map(formatItem).join(' | ')}`;
+  }
 
+  // Two messages — first covers seeds + garden actions, second covers tools + boosts.
+  // Each message stays well under Twitch's 500-char limit and the four labelled
+  // sections give viewers clear visual separation.
   client.say(channel,
-    `🛒 Cozy Garden Shop — Upgrades (stream-wide): ${upgradeList} || Consumables (per-viewer): ${consumableList} || Use !buy <name> to purchase!`
+    `🛒 Cozy Garden Shop — ${renderCategory('seeds')} || ${renderCategory('garden')}`
+  );
+  client.say(channel,
+    `🛒 ${renderCategory('tools')} || ${renderCategory('boosts')} || Use !buy <name> [slot] to purchase.`
   );
 }
 
 // ─── !buy <name> [slot] ───────────────────────────────────────────────────────
 
-function cmdBuy(client, channel, userstate, args) {
+function cmdBuy(client, channel, userstate, args, ctx = {}) {
   const username = userstate.username;
 
   if (!args.length) {
-    return client.say(channel, `@${username} ❓ Usage: !buy <item name> — e.g. !buy copper can or !buy growth tonic 2`);
+    return client.say(channel, `@${username} ❓ Usage: !buy <item name> — e.g. !buy seed, !buy water 2, !buy growth tonic 2`);
   }
 
-  // Last arg might be a slot number for growth tonic — must be a strict positive integer
+  // Last arg might be a slot number (for growth tonic, water, harvest) — must
+  // be a strict positive integer
   let itemArgs = [...args];
   let slotNum = null;
   const lastArg = args[args.length - 1];
@@ -103,6 +165,46 @@ function cmdBuy(client, channel, userstate, args) {
   const item = SHOP_CATALOG[match.id];
   if (!item) {
     return client.say(channel, `@${username} ❌ Item not found in catalog.`);
+  }
+
+  // ── Action items (Get Seed / Rare Seed / Water / Harvest / Expand) ─────────
+  // In channel-rewards mode, redirect users to the matching channel reward.
+  // In petals mode, charge the configured cost and run the perform function.
+
+  if (item.type === 'action') {
+    // Some actions (e.g. fertilize) are petals-only by design — no channel reward
+    // equivalent exists, so they always charge petals regardless of mode.
+    if (ctx.useChannelRewards && !item.petalsOnly) {
+      return client.say(channel,
+        `@${username} 🌿 The "${item.rewardName}" action is a channel point reward — redeem it from the rewards menu instead!`
+      );
+    }
+    const performFn = ctx.performAction && ctx.performAction[item.actionId];
+    if (typeof performFn !== 'function') {
+      return client.say(channel, `@${username} ❌ This action isn't wired up — check the bot's setup.`);
+    }
+    const cost = (ctx.costs && ctx.costs[item.actionId]) || 0;
+    const message = slotNum != null ? String(slotNum) : '';
+
+    if (typeof ctx.runPetalCostAction === 'function') {
+      return ctx.runPetalCostAction(channel, username, item.name.toLowerCase(), cost, () => performFn(username, message));
+    }
+
+    // Fallback inline runner if no helper passed
+    if (cost > 0) {
+      const v = db.getViewer(username);
+      if (v.petals < cost) {
+        return client.say(channel, `@${username} 💸 Need ${cost}🌸 for ${item.name} (you have ${v.petals}🌸).`);
+      }
+    }
+    const result = performFn(username, message);
+    for (const m of result.messages) client.say(channel, m);
+    if (result.ok && cost > 0) {
+      db.deductPetals(username, cost);
+      const remaining = db.getViewer(username).petals;
+      client.say(channel, `@${username} 💸 -${cost}🌸 (balance: ${remaining}🌸)`);
+    }
+    return;
   }
 
   const viewer = db.getViewer(username);
@@ -170,8 +272,8 @@ function cmdBuy(client, channel, userstate, args) {
           // Check for stage advancement
           let updatedSlot = db.getSlot(s.slot);
           let updInfo = getGrowthInfo(updatedSlot);
-          const { getWatersNeededWithUpgrade } = require('../helpers');
-          const needed = getWatersNeededWithUpgrade(updInfo.watersNeeded);
+          const { getEffectiveWatersNeeded } = require('../helpers');
+          const needed = getEffectiveWatersNeeded(s.slot, updInfo.watersNeeded);
           while (!updInfo.isBloom && updatedSlot.waters_done >= needed) {
             db.advanceStage(s.slot);
             updatedSlot = db.getSlot(s.slot);
