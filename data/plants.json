@@ -1,5 +1,14 @@
 [
   {
+    "id": "dandelion",
+    "name": "Dandelion",
+    "emoji": "🌾",
+    "rarity": "common",
+    "watersPerStage": [2, 2, 3],
+    "harvestPetals": 100,
+    "fact": "Every part of a dandelion is edible — leaves, flowers, and even the roots."
+  },
+  {
     "id": "daisy",
     "name": "Daisy",
     "emoji": "🌼",
@@ -13,126 +22,189 @@
     "name": "Sunflower",
     "emoji": "🌻",
     "rarity": "common",
-    "watersPerStage": [2, 3, 3],
+    "watersPerStage": [3, 3, 4],
     "harvestPetals": 100,
     "fact": "Young sunflowers track the sun across the sky each day, a behavior called heliotropism."
   },
   {
-    "id": "clover",
-    "name": "Clover",
-    "emoji": "🍀",
+    "id": "marigold",
+    "name": "Marigold",
+    "emoji": "🏵️",
     "rarity": "common",
     "watersPerStage": [2, 2, 3],
     "harvestPetals": 100,
-    "fact": "Only about 1 in 5,000 clovers has four leaves — most have three."
+    "fact": "Marigolds are natural pest repellents — gardeners plant them around vegetables to keep insects away."
   },
   {
     "id": "tulip",
     "name": "Tulip",
     "emoji": "🌷",
     "rarity": "common",
-    "watersPerStage": [2, 3, 4],
+    "watersPerStage": [2, 3, 3],
     "harvestPetals": 100,
     "fact": "In 1630s Holland, a single tulip bulb could cost more than a house — peak 'Tulip Mania'."
+  },
+  {
+    "id": "daffodil",
+    "name": "Daffodil",
+    "emoji": "💛",
+    "rarity": "common",
+    "watersPerStage": [2, 3, 3],
+    "harvestPetals": 100,
+    "fact": "Daffodils contain a toxin called lycorine that wildlife avoids — making them naturally deer- and rodent-proof."
+  },
+  {
+    "id": "cosmo",
+    "name": "Cosmo",
+    "emoji": "🌸",
+    "rarity": "common",
+    "watersPerStage": [2, 2, 3],
+    "harvestPetals": 100,
+    "fact": "Cosmos got their name from the Greek word for harmony, after the orderly arrangement of their petals."
+  },
+  {
+    "id": "petunia",
+    "name": "Petunia",
+    "emoji": "💜",
+    "rarity": "common",
+    "watersPerStage": [3, 3, 3],
+    "harvestPetals": 100,
+    "fact": "Petunias are technically related to tomatoes — both belong to the Solanaceae nightshade family."
+  },
+  {
+    "id": "zinnia",
+    "name": "Zinnia",
+    "emoji": "🌺",
+    "rarity": "common",
+    "watersPerStage": [2, 3, 3],
+    "harvestPetals": 100,
+    "fact": "Zinnias were the first flowers grown in space — astronauts cultivated them aboard the ISS in 2016."
+  },
+  {
+    "id": "dahlia",
+    "name": "Dahlia",
+    "emoji": "🏵️",
+    "rarity": "common",
+    "watersPerStage": [3, 3, 4],
+    "harvestPetals": 100,
+    "fact": "Dahlias are the national flower of Mexico, where Aztecs grew them as food long before they became ornamentals."
+  },
+  {
+    "id": "peony",
+    "name": "Peony",
+    "emoji": "🌸",
+    "rarity": "common",
+    "watersPerStage": [2, 3, 4],
+    "harvestPetals": 100,
+    "fact": "Peonies can live for over 100 years — there are documented plants in China still blooming after 200+ years."
+  },
+  {
+    "id": "coneflower",
+    "name": "Coneflower",
+    "emoji": "🌼",
+    "rarity": "common",
+    "watersPerStage": [2, 2, 3],
+    "harvestPetals": 100,
+    "fact": "Coneflowers (Echinacea) have been used in herbal medicine for centuries to support the immune system."
+  },
+  {
+    "id": "impatiens",
+    "name": "Impatiens",
+    "emoji": "🌺",
+    "rarity": "common",
+    "watersPerStage": [3, 3, 3],
+    "harvestPetals": 100,
+    "fact": "Touch a ripe impatiens seedpod and it'll burst, scattering seeds — the genus name literally means 'impatient'."
+  },
+  {
+    "id": "pansy",
+    "name": "Pansy",
+    "emoji": "💜",
+    "rarity": "common",
+    "watersPerStage": [2, 3, 3],
+    "harvestPetals": 100,
+    "fact": "Pansies are edible flowers with a mild minty flavor often used to garnish desserts and salads."
+  },
+  {
+    "id": "mum",
+    "name": "Mum",
+    "emoji": "🏵️",
+    "rarity": "common",
+    "watersPerStage": [2, 3, 3],
+    "harvestPetals": 100,
+    "fact": "Chrysanthemums (mums) are Japan's imperial flower — the Imperial Seal of Japan is a stylized chrysanthemum."
+  },
+  {
+    "id": "rose",
+    "name": "Rose",
+    "emoji": "🌹",
+    "rarity": "uncommon",
+    "watersPerStage": [3, 4, 5],
+    "harvestPetals": 250,
+    "fact": "Roses are over 35 million years old — fossil evidence places them long before humans evolved."
+  },
+  {
+    "id": "snapdragon",
+    "name": "Snapdragon",
+    "emoji": "🌷",
+    "rarity": "uncommon",
+    "watersPerStage": [3, 4, 4],
+    "harvestPetals": 250,
+    "fact": "Snapdragons get their name from squeezing the bloom open like a tiny dragon's mouth that snaps shut."
   },
   {
     "id": "lavender",
     "name": "Lavender",
     "emoji": "💜",
     "rarity": "uncommon",
+    "watersPerStage": [2, 3, 4],
+    "harvestPetals": 250,
+    "fact": "Lavender belongs to the mint family and bees absolutely love it — a single plant can host hundreds at once."
+  },
+  {
+    "id": "lily",
+    "name": "Lily",
+    "emoji": "🪷",
+    "rarity": "uncommon",
     "watersPerStage": [3, 4, 4],
     "harvestPetals": 250,
-    "fact": "Lavender belongs to the mint family and bees absolutely love it."
+    "fact": "Some lily varieties are highly toxic to cats — even the pollen can cause kidney failure if ingested."
   },
   {
-    "id": "mushroom",
-    "name": "Mushroom",
-    "emoji": "🍄",
-    "rarity": "uncommon",
-    "watersPerStage": [3, 3, 5],
-    "harvestPetals": 250,
-    "fact": "Mushrooms aren't plants at all — they're more closely related to animals than to flowers!"
-  },
-  {
-    "id": "bluebell",
-    "name": "Bluebell",
-    "emoji": "🔵",
+    "id": "fuchsia",
+    "name": "Fuchsia",
+    "emoji": "💗",
     "rarity": "uncommon",
     "watersPerStage": [3, 4, 5],
     "harvestPetals": 250,
-    "fact": "Bluebell woods can take over a century to establish — they're a sign of ancient forest."
+    "fact": "The color 'fuchsia' was named after the flower, which was named after botanist Leonhart Fuchs in the 1700s."
   },
   {
-    "id": "lotus",
-    "name": "Lotus",
-    "emoji": "🪷",
-    "rarity": "rare",
-    "watersPerStage": [4, 5, 6],
-    "harvestPetals": 600,
-    "fact": "Lotus seeds can germinate after 1,000+ years of dormancy — they're nature's time capsules."
+    "id": "sweetpeas",
+    "name": "Sweet Peas",
+    "emoji": "💐",
+    "rarity": "uncommon",
+    "watersPerStage": [3, 4, 4],
+    "harvestPetals": 250,
+    "fact": "Sweet peas are prized for their fragrance, but unlike garden peas they're toxic — never eat them."
   },
   {
-    "id": "moonflower",
-    "name": "Moonflower",
-    "emoji": "🌙",
-    "rarity": "rare",
-    "watersPerStage": [4, 6, 6],
-    "harvestPetals": 600,
-    "fact": "Moonflowers bloom only at night, unfurling in minutes to attract moths under the stars."
+    "id": "hydrangea",
+    "name": "Hydrangea",
+    "emoji": "💙",
+    "rarity": "uncommon",
+    "watersPerStage": [3, 4, 5],
+    "harvestPetals": 250,
+    "fact": "Hydrangea flowers change color based on soil pH: acidic soil turns them blue, alkaline soil turns them pink."
   },
   {
-    "id": "crystalrose",
-    "name": "Crystal Rose",
-    "emoji": "🌹",
-    "rarity": "rare",
-    "watersPerStage": [5, 5, 7],
-    "harvestPetals": 600,
-    "fact": "Legend says a Crystal Rose only blooms when watched by someone who truly believes."
-  },
-  {
-    "id": "dandelion",
-    "name": "Dandelion",
-    "emoji": "🌾",
-    "rarity": "common",
-    "watersPerStage": [2, 2, 3],
-    "harvestPetals": 100,
-    "fact": "Every part of a dandelion is edible — leaves, flowers, and even the roots."
-  },
-  {
-    "id": "poppy",
-    "name": "Poppy",
-    "emoji": "🥀",
-    "rarity": "common",
-    "watersPerStage": [2, 3, 3],
-    "harvestPetals": 100,
-    "fact": "A single poppy plant can produce up to 60,000 tiny seeds in one season."
-  },
-  {
-    "id": "cactus",
-    "name": "Cactus",
-    "emoji": "🌵",
-    "rarity": "common",
-    "watersPerStage": [1, 2, 2],
-    "harvestPetals": 100,
-    "fact": "A saguaro cactus can live over 150 years and store hundreds of gallons of water in its trunk."
-  },
-  {
-    "id": "maple",
-    "name": "Maple Sapling",
-    "emoji": "🍁",
-    "rarity": "common",
-    "watersPerStage": [2, 3, 4],
-    "harvestPetals": 100,
-    "fact": "It takes about 40 gallons of maple sap to make just one gallon of maple syrup."
-  },
-  {
-    "id": "fern",
-    "name": "Fern",
-    "emoji": "🍃",
-    "rarity": "common",
-    "watersPerStage": [2, 2, 3],
-    "harvestPetals": 100,
-    "fact": "Ferns predate dinosaurs by 200 million years and reproduce via spores, not seeds."
+    "id": "gardenia",
+    "name": "Gardenia",
+    "emoji": "💮",
+    "rarity": "uncommon",
+    "watersPerStage": [3, 4, 5],
+    "harvestPetals": 250,
+    "fact": "Gardenia flowers are so fragrant that perfumers describe their scent as 'so heavy it's almost edible'."
   },
   {
     "id": "hyacinth",
@@ -144,57 +216,102 @@
     "fact": "Hyacinths are named after a Greek mythological figure beloved by the god Apollo."
   },
   {
-    "id": "cherryblossom",
-    "name": "Cherry Blossom",
-    "emoji": "🌸",
+    "id": "poppy",
+    "name": "Poppy",
+    "emoji": "🥀",
     "rarity": "uncommon",
-    "watersPerStage": [3, 4, 5],
+    "watersPerStage": [3, 4, 4],
     "harvestPetals": 250,
-    "fact": "Japan tracks cherry blossom forecasts on the news — full bloom typically lasts only a week."
+    "fact": "A single poppy plant can produce up to 60,000 tiny seeds in one season."
   },
   {
-    "id": "pumpkin",
-    "name": "Pumpkin Vine",
-    "emoji": "🎃",
-    "rarity": "uncommon",
-    "watersPerStage": [3, 4, 5],
-    "harvestPetals": 250,
-    "fact": "The world record pumpkin weighed over 2,700 pounds — heavier than a small car."
+    "id": "freesia",
+    "name": "Freesia",
+    "emoji": "💐",
+    "rarity": "rare",
+    "watersPerStage": [4, 5, 5],
+    "harvestPetals": 600,
+    "fact": "Freesia flowers are so prized for their citrus-like scent that they're a staple of high-end perfume blends."
   },
   {
-    "id": "bonsai",
-    "name": "Bonsai",
-    "emoji": "🪴",
-    "rarity": "uncommon",
-    "watersPerStage": [4, 4, 4],
-    "harvestPetals": 250,
-    "fact": "The oldest known bonsai is over 1,000 years old and still being cared for in Japan."
-  },
-  {
-    "id": "phoenixlily",
-    "name": "Phoenix Lily",
-    "emoji": "🔥",
+    "id": "orchid",
+    "name": "Orchid",
+    "emoji": "🪻",
     "rarity": "rare",
     "watersPerStage": [4, 5, 6],
     "harvestPetals": 600,
-    "fact": "Phoenix Lilies are said to sprout brightest in soil scorched by wildfire — beauty from ash."
+    "fact": "Orchids form the largest family of flowering plants on Earth — over 28,000 wild species and counting."
   },
   {
-    "id": "frostflower",
-    "name": "Frostflower",
-    "emoji": "❄️",
+    "id": "bluepoppy",
+    "name": "Blue Poppy",
+    "emoji": "🥀",
     "rarity": "rare",
-    "watersPerStage": [5, 5, 6],
+    "watersPerStage": [4, 6, 6],
     "harvestPetals": 600,
-    "fact": "Real frostflowers form when sap freezes and bursts through plant stems on cold mornings."
+    "fact": "Himalayan blue poppies are notoriously hard to grow — they need cool, damp summers found in only a few regions."
   },
   {
-    "id": "galaxyrose",
-    "name": "Galaxy Rose",
-    "emoji": "✨",
+    "id": "batflower",
+    "name": "Bat Flower",
+    "emoji": "🦇",
     "rarity": "rare",
-    "watersPerStage": [4, 6, 7],
+    "watersPerStage": [4, 5, 7],
     "harvestPetals": 600,
-    "fact": "Each Galaxy Rose petal is said to hold a tiny constellation — no two are ever the same."
+    "fact": "The black bat flower's bloom can reach 12 inches across, with whisker-like bracts trailing up to 28 inches long."
+  },
+  {
+    "id": "chocolatecosmo",
+    "name": "Chocolate Cosmo",
+    "emoji": "🍫",
+    "rarity": "rare",
+    "watersPerStage": [4, 5, 6],
+    "harvestPetals": 600,
+    "fact": "Chocolate cosmos really do smell like chocolate when they bloom — and they're nearly extinct in the wild."
+  },
+  {
+    "id": "verbena",
+    "name": "Verbena",
+    "emoji": "💜",
+    "rarity": "rare",
+    "watersPerStage": [4, 5, 5],
+    "harvestPetals": 600,
+    "fact": "Ancient Romans considered verbena a sacred herb of altars, calling it 'the plant of grace'."
+  },
+  {
+    "id": "bluebells",
+    "name": "Bluebells",
+    "emoji": "🔵",
+    "rarity": "rare",
+    "watersPerStage": [4, 5, 6],
+    "harvestPetals": 600,
+    "fact": "Bluebell woods can take over a century to establish — they're considered a sign of ancient, undisturbed forest."
+  },
+  {
+    "id": "honeywort",
+    "name": "Honeywort",
+    "emoji": "🍯",
+    "rarity": "rare",
+    "watersPerStage": [4, 5, 6],
+    "harvestPetals": 600,
+    "fact": "Honeywort produces so much nectar that bees can drain a flower clean in seconds — its name comes from this trait."
+  },
+  {
+    "id": "vinca",
+    "name": "Vinca",
+    "emoji": "🟣",
+    "rarity": "rare",
+    "watersPerStage": [3, 4, 5],
+    "harvestPetals": 600,
+    "fact": "Vinca (periwinkle) is the source of vincristine, a real-world cancer drug derived from the plant's alkaloids."
+  },
+  {
+    "id": "passiflora",
+    "name": "Passiflora",
+    "emoji": "🟪",
+    "rarity": "rare",
+    "watersPerStage": [5, 5, 7],
+    "harvestPetals": 600,
+    "fact": "Passion flowers (Passiflora) were named by Spanish missionaries who saw the crucifixion of Christ in the bloom's structure."
   }
 ]

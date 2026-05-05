@@ -7,11 +7,12 @@ A cozy Twitch chatbot with a shared, expanding virtual garden. Viewers redeem ch
 ## ✨ Features
 
 - **Shared garden** — every viewer plants in the same plot, so the garden is a community effort
-- **Channel point integration** — getting seeds, watering, and harvesting are all redeemed via Twitch channel point rewards
+- **Two play modes** — toggle between **Channel Rewards** (Twitch points trigger actions, free for the redeemer) and **Petals-only** (chat commands cost in-bot currency, no channel points needed) via a single env var
+- **Channel point integration** — getting seeds, watering, and harvesting can all be redeemed via Twitch channel point rewards
 - **Channel-wide harvest payouts** — when anyone harvests a flower, every recently-active chatter shares the petal reward
-- **22 plants across 3 rarities** — common, uncommon, and rare flora with different bloom times and petal payouts
+- **35 real-world plants across 3 rarities** — common, uncommon, and rare flora with different watering profiles and petal payouts
 - **Botanical fun facts** — every plant comes with a real-world (or in-universe) trivia tidbit revealed when its seed is unwrapped
-- **Live OBS overlay** — a transparent browser-source overlay renders the garden in real time, complete with a wooden raised garden box, custom 32×32 pixel-art sprites, stage-based scaling, and a gentle wind-sway animation
+- **Live OBS overlay** — a transparent browser-source overlay renders the garden in real time, complete with a wooden raised garden box, custom 64×64 pixel-art sprites, stage-based scaling, and a gentle wind-sway animation
 - **Petals economy** — harvest plants to earn 🌸 petals, then spend them in the shop
 - **Stream-wide upgrade & per-viewer consumables** — Compost Bin permanently improves the garden; Rain Cloud and Growth Tonic give one-shot boosts
 - **Persistent state** — SQLite database keeps the garden alive across restarts
@@ -61,17 +62,38 @@ All config lives in `.env`:
 | `BOT_USERNAME` | ✅ | Twitch login of the bot account |
 | `OAUTH_TOKEN` | ✅ | OAuth token for the bot (must include `chat:read` and `chat:edit` scopes), formatted as `oauth:xxxxxx` |
 | `CHANNEL_NAME` | ✅ | Channel to join, without the `#` |
-| `GET_SEED_REWARD_ID` | ✅* | Reward UUID for the random-seed redemption |
-| `RARE_SEED_REWARD_ID` | ✅* | Reward UUID for the guaranteed-rare-seed redemption |
-| `WATER_REWARD_ID` | ✅* | Reward UUID for the water-a-plant redemption |
-| `HARVEST_REWARD_ID` | ✅* | Reward UUID for the harvest-a-plant redemption |
-| `EXPAND_PLOT_REWARD_ID` | ✅* | Reward UUID for expanding the garden by one slot |
+| `USE_CHANNEL_REWARDS` | optional | `true` (default) to trigger actions via Twitch channel point rewards; `false` to use petal-cost chat commands instead |
+| `GET_SEED_REWARD_ID` | ✅¹ | Reward UUID for the random-seed redemption |
+| `RARE_SEED_REWARD_ID` | ✅¹ | Reward UUID for the guaranteed-rare-seed redemption |
+| `WATER_REWARD_ID` | ✅¹ | Reward UUID for the water-a-plant redemption |
+| `HARVEST_REWARD_ID` | ✅¹ | Reward UUID for the harvest-a-plant redemption |
+| `EXPAND_PLOT_REWARD_ID` | ✅¹ | Reward UUID for expanding the garden by one slot |
+| `STARTER_PETALS` | optional² | Petals granted on `!startgarden` (default `100`) |
+| `SEED_COST` | optional² | `!buy seed` price — random distribution 60/30/10 (default `30`) |
+| `UNCOMMON_SEED_COST` | optional² | `!buy uncommon seed` price — 75% uncommon / 25% rare, never common (default `100`) |
+| `RARE_SEED_COST` | optional² | `!buy rare seed` price — guaranteed rare (default `200`) |
+| `WATER_COST` | optional² | `!water` price (default `5`) |
+| `EXPAND_COST_BASE` | optional² | Base for the quadratic expand cost — actual cost = base × currentSize² (default `100`, so 3→4 = 900, 4→5 = 1600, 9→10 = 8100) |
+| `FERTILIZE_COST` | optional³ | `!buy fertilize <slot>` price (default `300`) — applies to an empty slot and halves the water requirement at every stage for the next plant there. Always petal-priced regardless of mode. |
 | `MAX_GARDEN_SLOTS` | optional | Hard cap on garden size (default `10`) |
 | `OVERLAY_PORT` | optional | Port for the OBS overlay server (default `8080`) |
 | `ACTIVE_VIEWER_WINDOW_MIN` | optional | How recently someone must have chatted to share in a harvest payout, in minutes (default `30`) |
 | `IGNORED_USERS` | optional | Comma-separated list of usernames (other bots) to exclude from activity tracking and harvest rewards. The CozyGardenBot's own account is always ignored. |
 
-\* Reward IDs can be left blank initially. The bot will print the reward UUID to the console the first time someone redeems an unrecognized reward — paste those into `.env` and restart.
+¹ Only used when `USE_CHANNEL_REWARDS=true`. Reward IDs can be left blank initially — the bot will print the UUID to the console the first time someone redeems an unrecognized reward.<br>
+² Only used when `USE_CHANNEL_REWARDS=false`.<br>
+³ Petals-only feature — works in both modes since players accumulate petals via harvest payouts.
+
+### Play modes
+
+Set `USE_CHANNEL_REWARDS` in `.env` to switch the entire bot's flow with one variable — no code changes needed. The same game mechanics run either way.
+
+| Mode | When to use | How players get seeds | How they water/harvest/expand |
+|---|---|---|---|
+| **Channel Rewards** (`true`, default) | You're a Twitch Affiliate/Partner and want viewers to spend channel points | Redeem the **Get a Seed** / **Rare Seed** rewards | Redeem **Water Plant** / **Harvest Plant** / **Expand Garden** rewards |
+| **Petals-only** (`false`) | You're not an Affiliate yet, or you'd rather use a self-contained currency | New viewers run `!startgarden` to claim `STARTER_PETALS` 🌸, then `!buy seed` (`SEED_COST`🌸) | Chat commands `!water`, `!harvest`, `!expand` (each with their own petal cost; `!harvest` is free since it's the payout, `!expand` cost scales quadratically with garden size) |
+
+Both modes share the same `!plant`, `!seed`, `!discard`, `!garden`, `!petals`, `!gardeners`, `!shop`, and `!buy` commands. Switching modes is non-destructive — you can flip it any time, and existing player petals/held seeds carry over.
 
 ### Getting your environment variables
 
@@ -170,20 +192,23 @@ MAX_GARDEN_SLOTS=12
 
 ### The growth loop
 
-1. **Get a seed** — redeem the *Get a Seed* (or *Rare Seed*) channel reward
-2. **Plant it** — `!plant` (auto-picks empty slot) or `!plant <slot>`
-3. **Water it** — redeem the *Water Plant* reward, optionally typing a slot number
-4. **Watch it grow** — Seed 🌱 → Sprout 🌿 → Budding 🌸 → Blooming 🌺
-5. **Harvest** — redeem the *Harvest Plant* reward to collect petals 🌸
-6. **Spend** — visit the `!shop` to buy upgrades and consumables
+| Step | Channel-Rewards mode | Petals-only mode |
+|---|---|---|
+| 1. **Earn currency** | Spend Twitch channel points | Run `!startgarden` once to claim `STARTER_PETALS`🌸; harvest plants to earn more |
+| 2. **Get a seed** | Redeem *Get a Seed* (or *Rare Seed*) | `!buy seed` (or `!buy rare seed`) — costs petals |
+| 3. **Plant it** | `!plant` (auto-picks empty slot) or `!plant <slot>` | same |
+| 4. **Water it** | Redeem *Water Plant*, optionally with a slot number | `!water [slot]` — costs petals |
+| 5. **Watch it grow** | Seed 🌱 → Sprout 🌿 → Budding 🌸 → Blooming 🌺 | same |
+| 6. **Harvest** | Redeem *Harvest Plant* — every active chatter shares the petals | `!harvest [slot]` — every active chatter still shares the petals |
+| 7. **Spend** | `!shop` and `!buy` for upgrades, consumables, or more actions | same |
 
 ### Plants
 
 | Rarity | Plants | Petal Reward |
 |---|---|---|
-| ⚪ Common | 🌼 Daisy, 🌻 Sunflower, 🍀 Clover, 🌷 Tulip, 🌾 Dandelion, 🥀 Poppy, 🌵 Cactus, 🍁 Maple Sapling, 🍃 Fern | 100 🌸 |
-| 🟢 Uncommon | 💜 Lavender, 🍄 Mushroom, 🔵 Bluebell, 🪻 Hyacinth, 🌸 Cherry Blossom, 🎃 Pumpkin Vine, 🪴 Bonsai | 250 🌸 |
-| 🌟 Rare | 🪷 Lotus, 🌙 Moonflower, 🌹 Crystal Rose, 🔥 Phoenix Lily, ❄️ Frostflower, ✨ Galaxy Rose | 600 🌸 |
+| ⚪ Common (15) | 🌾 Dandelion, 🌼 Daisy, 🌻 Sunflower, 🏵️ Marigold, 🌷 Tulip, 💛 Daffodil, 🌸 Cosmo, 💜 Petunia, 🌺 Zinnia, 🏵️ Dahlia, 🌸 Peony, 🌼 Coneflower, 🌺 Impatiens, 💜 Pansy, 🏵️ Mum | 100 🌸 |
+| 🟢 Uncommon (10) | 🌹 Rose, 🌷 Snapdragon, 💜 Lavender, 🪷 Lily, 💗 Fuchsia, 💐 Sweet Peas, 💙 Hydrangea, 💮 Gardenia, 🪻 Hyacinth, 🥀 Poppy | 250 🌸 |
+| 🌟 Rare (10) | 💐 Freesia, 🪻 Orchid, 🥀 Blue Poppy, 🦇 Bat Flower, 🍫 Chocolate Cosmo, 💜 Verbena, 🔵 Bluebells, 🍯 Honeywort, 🟣 Vinca, 🟪 Passiflora | 600 🌸 |
 
 Each plant has its own watering profile — rare plants take more waters per stage but pay out far more petals.
 
@@ -202,27 +227,67 @@ Each plant has its own watering profile — rare plants take more waters per sta
 | `!gardeners` | Top 3 gardeners by total waters given |
 | `!shop` | List shop items and prices |
 | `!buy <item> [slot]` | Purchase a shop item (slot required for Growth Tonic) |
-| `!gardenhelp` | Quick reference for all commands and rewards |
+| `!gardenhelp` | Quick reference for all commands and rewards (auto-adapts to current mode) |
 
-> 🔒 **Watering and harvesting are channel point rewards, not chat commands.** Typing `!water` or `!harvest` will redirect you to use the rewards.
+**Petals-only mode adds these chat commands** (when `USE_CHANNEL_REWARDS=false`):
+
+| Command | Cost | Description |
+|---|---|---|
+| `!startgarden` | free | Initialize as a gardener and claim `STARTER_PETALS` 🌸 (one-time per player) |
+| `!water [slot]` | `WATER_COST` 🌸 | Water a plant (auto-picks lowest-progress slot if no number given) |
+| `!harvest [slot]` | free | Harvest a bloomed plant (auto-picks first bloomed if no number given) |
+| `!expand` | quadratic 🌸 | Expand the garden by one slot — cost scales as `EXPAND_COST_BASE × currentSize²` |
+
+> 🌱 **Seeds are bought through the shop** — use `!buy seed` (`SEED_COST` 🌸) or `!buy rare seed` (`RARE_SEED_COST` 🌸). There are no standalone seed commands.
+
+> 🔒 **In channel-rewards mode**, `!water`, `!harvest`, `!expand`, and `!buy seed` / `!buy rare seed` just print a friendly redirect to use the matching channel point reward instead.
+>
+> 🌱 **In petals-only mode, every command is gated behind `!startgarden`** — viewers who haven't started yet get a friendly nudge to type `!startgarden` instead. The exceptions are `!startgarden` itself, `!gardenhelp`, `!garden`, `!gardeners`, and `!shop` (so newcomers can browse before deciding to start). Channel-rewards mode has no such gate since there's no `!startgarden` flow.
 
 ---
 
 ## 🎁 Channel Point Rewards
+
+> Only relevant when `USE_CHANNEL_REWARDS=true`. In petals-only mode, the same actions are run via `!water [slot]`, `!harvest [slot]`, `!expand`, or via `!buy <name>` in the shop (seeds are shop-only).
 
 | Reward | Behavior |
 |---|---|
 | **Get a Seed** | Rolls a random seed (60/30/10 common/uncommon/rare) and shares a fun fact about the plant. You can only hold one seed at a time — plant or discard it before redeeming again. |
 | **Rare Seed** | Always rolls a rare seed (with its fun fact). Same one-seed-at-a-time rule. |
 | **Water Plant** | Waters a plant. If the user types a slot number when redeeming (e.g. `3`), waters that slot; otherwise auto-picks the slot with the lowest water progress. |
-| **Harvest Plant** | Harvests a bloomed plant. If the user types a slot number when redeeming, harvests that slot; otherwise auto-picks the first bloomed slot. **Petals go to the redeemer *and* every other viewer who has chatted recently** — the harvest is a shared community reward. |
+| **Harvest Plant** | Harvests a bloomed plant. If the user types a slot number when redeeming, harvests that slot; otherwise auto-picks the first bloomed slot. **Petals go to the redeemer *and* every other viewer who has chatted recently** — the harvest is a shared community reward. (In petals-only mode, only viewers who have started the game via `!startgarden`/seed-redemption are included; in channel-rewards mode there is no such gate.) |
 | **Expand Garden** | Adds one slot to the shared garden, up to `MAX_GARDEN_SLOTS`. |
 
 ---
 
 ## 🛒 Shop
 
-### Stream-wide upgrades (one-time purchases, benefit everyone)
+The `!shop` command is the unified browse-and-buy interface. It lists four sections (sent as two chat messages):
+
+### 🌱 Seeds
+
+Seed purchases. In channel-rewards mode, Get a Seed and Rare Seed redirect to the matching channel point reward; Uncommon Seed is always petal-priced.
+
+| Item | In Channel-Rewards mode | In Petals mode |
+|---|---|---|
+| 🎁 Get a Seed | `!buy seed` → "use the *Get a Seed* channel reward instead" | `!buy seed` charges `SEED_COST` 🌸 — random rarity (60/30/10) |
+| 🍀 Uncommon Seed | `!buy uncommon seed` charges `UNCOMMON_SEED_COST` 🌸 (petals-only — no channel reward equivalent) | Same — `!buy uncommon seed` charges `UNCOMMON_SEED_COST` 🌸. **75% uncommon / 25% rare** — never common |
+| 🌟 Rare Seed | redirect | `!buy rare seed` charges `RARE_SEED_COST` 🌸 — guaranteed rare |
+
+### 🌿 Garden Actions
+
+These are the same actions available via channel rewards / standalone commands. Their behavior depends on the current mode:
+
+| Item | In Channel-Rewards mode | In Petals mode |
+|---|---|---|
+| 💧 Water Plant | redirect | `!buy water [slot]` charges `WATER_COST` 🌸 |
+| 🌺 Harvest | redirect | `!buy harvest [slot]` is free (it's the payout) |
+| 🌿 Expand Garden | redirect | `!buy expand` charges the current quadratic cost (`EXPAND_COST_BASE × currentSize²` 🌸) |
+| 🌱 Fertilize | `!buy fertilize <slot>` charges `FERTILIZE_COST` 🌸 (petals-only feature, no channel reward) | Same — `!buy fertilize <slot>` charges `FERTILIZE_COST` 🌸. Slot must be empty; the **next** plant there grows with HALF the waters needed at every stage. |
+
+Aliases that fuzzy-match work too — e.g. `!buy seed`, `!buy rareseed`, `!buy water 3`, `!buy harvestplant`, `!buy expand`.
+
+### 🪣 Watering Tools (stream-wide upgrades, one-time purchases)
 
 | Item | Cost | Effect |
 |---|---|---|
@@ -230,7 +295,7 @@ Each plant has its own watering profile — rare plants take more waters per sta
 | 🪣 Copper Can | 400 🌸 | *Vestigial* — used to reduce a watering cooldown that no longer exists since watering became a channel reward. Kept in the shop for now; safe to ignore. |
 | 🪣✨ Silver Can | 800 🌸 | *Vestigial* — see Copper Can. Requires Copper Can. |
 
-### Per-viewer consumables (single-use)
+### 🧪 Boosts (per-viewer consumables, single-use)
 
 | Item | Cost | Effect |
 |---|---|---|
@@ -266,9 +331,9 @@ The overlay renders one continuous **wooden raised garden box** with all the pla
 - A warm **golden wash** above any bloomed plant to spotlight that it's harvest-ready
 
 Below the box, a unified **info strip** shows three rows per slot:
-1. `Slot N`
+1. `Slot N` (shown as `Slot N ✨` when fertilized)
 2. Plant name (or *empty* in faded text)
-3. Stage label — `Seed` / `Sprout` / `Budding` / `Bloom` (gold for blooms)
+3. Stage label — `Seed` / `Sprout` / `Budding` / `Bloom` (gold for blooms); empty fertilized slots show `Fertilized` in green instead
 
 ### Previewing without OBS
 
@@ -292,8 +357,8 @@ For example: `data/Sprites/Daisy/daisy_bloom_sprite.png`, `data/Sprites/PhoenixL
 The mapping from `plant_id` (lowercase, from [data/plants.json](data/plants.json)) to folder name (PascalCase) lives in `PLANT_SPRITE_FOLDERS` in [overlay/public/overlay.js](overlay/public/overlay.js) — if you add a new plant, add an entry there too.
 
 **Authoring tips:**
-- **Native resolution: 32×32px.** Sprites are drawn at 64×64 for blooms (clean 2× scale, perfectly crisp pixels)
-- All four stages use the **same 32×32 frame size** — the overlay handles size differences by scaling: sprout renders at 32×32 (1×), budding at 48×48 (1.5×), bloom at 64×64 (2×). You don't need to scale your art per stage, just make each frame visually appropriate
+- **Native resolution: 64×64px.** Sprites are drawn at 64×64 for blooms (perfect 1:1, pixel-perfect)
+- All four stages use the **same 64×64 frame size** — the overlay handles size differences by scaling: sprout renders at 32×32 (clean 0.5×), budding at 48×48 (0.75× — slight pixel inconsistency since it's non-integer), bloom at 64×64 (1:1). You don't need to scale your art per stage, just make each frame visually appropriate
 - Use **transparent backgrounds** — the wooden box and dirt are already drawn by the overlay; each sprite should just be the plant itself
 - Anchor the plant to the **bottom of its frame** so it appears to grow out of the dirt
 - The **shared seed sprite** (`seed_sprite.png`) is automatically pushed below the dirt line so it looks buried
@@ -305,17 +370,19 @@ The mapping from `plant_id` (lowercase, from [data/plants.json](data/plants.json
 
 ```
 cozy/
-├── index.js              # Entry point, IRC client, message router, reward handler
+├── index.js              # Entry point — IRC client, message router, mode switch,
+│                         # perform* action functions, reward + command dispatch
 ├── db.js                 # SQLite layer + change EventEmitter for live overlay updates
-├── helpers.js            # Plant lookups, growth math, progress bars, slot parsing
+├── helpers.js            # Plant lookups, growth math, progress bars, slot parsing,
+│                         # fuzzy shop-item matcher
 ├── package.json
 ├── .env.example
 ├── .gitignore
 ├── commands/
 │   ├── garden.js         # !garden, !petals, !gardeners
 │   ├── seeds.js          # !seed, !plant, !discard
-│   ├── harvest.js        # cmdHarvest helper (harvest is invoked via channel reward)
-│   └── shop.js           # !shop, !buy, shop catalog
+│   ├── harvest.js        # cmdHarvest helper (legacy — harvest now runs via reward / !buy)
+│   └── shop.js           # !shop, !buy, shop catalog (uses shopContext from index.js)
 ├── overlay/
 │   ├── server.js         # HTTP + WebSocket server, broadcasts garden state on db change
 │   └── public/
@@ -325,7 +392,7 @@ cozy/
 │   ├── seed-test-garden.js  # Populate the garden with one plant at every stage for overlay testing
 │   └── reset-garden.js      # Clear all slots and reset the garden to default size
 └── data/
-    ├── plants.json       # 22 plant definitions (rarity, watersPerStage, harvestPetals, fact)
+    ├── plants.json       # 35 plant definitions (rarity, watersPerStage, harvestPetals, fact)
     └── Sprites/          # Pixel-art assets (seed + per-plant folders)
 ```
 
@@ -334,9 +401,10 @@ cozy/
 | Table | Purpose |
 |---|---|
 | `garden` | One row per slot — `plant_id`, `stage`, `waters_done`, `planted_by` |
-| `viewers` | Per-user state — `petals`, `held_seed`, `waters_given`, `last_watered` |
+| `viewers` | Per-user state — `petals` (currency for petals-mode actions, harvest payouts, and shop purchases), `held_seed`, `waters_given`, `last_watered`, `starter_claimed` (flips to 1 on first `!startgarden`, first seed redemption, or first harvest — gates both starter-petal claiming and harvest-payout eligibility) |
 | `upgrades` | Stream-wide one-time purchases |
-| `active_effects` | Pending consumables (e.g. Growth Tonic on a slot) |
+| `active_effects` | Pending per-viewer consumables (e.g. Growth Tonic on a slot) |
+| `slot_buffs` | Slot-bound persistent buffs (e.g. fertilizer) — auto-cleared when the slot is harvested/discarded |
 | `config` | Garden-wide settings, including current `garden_slots` count |
 
 ---
@@ -352,6 +420,20 @@ cozy/
 - On startup the bot **announces itself in chat** with the full command + reward summary, so viewers always have the info handy
 - **Connection diagnostics** — the bot logs IRC lifecycle events (`connecting`, `logon`, `connected`, `disconnected`, `notice`) and prints a verbose error message with common causes if connection fails
 - **Debug toggles** in `.env`: set `DEBUG_TMI=true` to log raw IRC traffic, or `DEBUG_REWARDS=true` to log every chat message's reward-tag presence/absence
+
+### Architecture: one set of action functions, three entry points
+
+To keep the two play modes from forking the codebase, every game-state-changing action lives in a single perform function (`performGetSeed`, `performWater`, `performHarvest`, `performExpand`) that returns a result object describing what messages to post. Three different dispatchers call into them with the same arguments:
+
+```
+Channel reward redemption ─┐
+                           │
+!water / !harvest / !etc.  ├──► performGetSeed / performWater / performHarvest / performExpand
+                           │
+!buy seed / !buy water     ─┘
+```
+
+Adding a new entry point (Bits, sub-only, command alias, etc.) means writing a new dispatcher and reusing the same perform function. Changing how watering works means editing one place. The `shopContext` object (in `index.js`) is the small bundle of mode flag + costs + perform functions + `runPetalCostAction` helper that gets injected into `cmdShop` and `cmdBuy`.
 
 ### Robustness & input validation
 
@@ -370,10 +452,11 @@ Two helper scripts for overlay/visual testing without waiting for live redemptio
 
 | Command | What it does |
 |---|---|
-| `npm run seed-test` | Sets the garden to 4 slots and plants one example at every stage (Daisy seed, Tulip sprout, Lavender budding, Crystal Rose bloom). Lets you verify sprite rendering, scaling, and the bloom highlight side-by-side. |
+| `npm run seed-test` | Sets the garden to 5 slots — slots 1-4 plant one example at every growth stage (Daisy seed, Sunflower sprout, Lavender budding, Bluebells bloom — all using shipped sprites), and slot 5 is left empty but fertilized. Lets you verify sprite rendering, stage scaling, the bloom highlight, and the fertilizer indicator side-by-side. |
 | `npm run reset-garden` | Clears every planted slot and resets the slot count to the default of 3. Doesn't touch viewers, petals, upgrades, or active effects. |
+| `node scripts/reset-database.js --yes` | ⚠️ **Destructive.** Wipes the entire database — every viewer, every petal balance, every planted slot, every upgrade, every consumable. Garden size reverts to 3. Requires `--yes` so it can't run by accident. Plants.json and sprite assets are untouched. *(On bash/cmd you can also use `npm run reset-database -- --yes`, but PowerShell sometimes strips the `--` separator — calling node directly sidesteps the issue.)* |
 
-After running either script, start the bot (`npm start`) and refresh your overlay/Browser Source.
+After running any of these, start the bot (`npm start`) and refresh your overlay/Browser Source.
 
 ### Adding a new plant
 
@@ -397,7 +480,7 @@ Add an entry to `data/plants.json`:
 
 If you want sprites for the new plant:
 1. Create a folder `data/Sprites/<PascalCaseName>/` matching the plant — e.g. `data/Sprites/Rosemary/`
-2. Drop in three sprites: `<plant_id>_sprout_sprite.png`, `<plant_id>_budding_sprite.png`, `<plant_id>_bloom_sprite.png` (32×32 native, transparent background)
+2. Drop in three sprites: `<plant_id>_sprout_sprite.png`, `<plant_id>_budding_sprite.png`, `<plant_id>_bloom_sprite.png` (64×64 native, transparent background)
 3. Add the lowercase id → PascalCase mapping to `PLANT_SPRITE_FOLDERS` in [overlay/public/overlay.js](overlay/public/overlay.js)
 
 No restart-time migration needed — the JSON is read on startup, and sprites are lazy-loaded the first time they're needed.

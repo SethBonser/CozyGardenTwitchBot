@@ -6,7 +6,7 @@ const express = require('express');
 const { WebSocketServer } = require('ws');
 
 const db = require('../db');
-const { getGrowthInfo, getWatersNeededWithUpgrade } = require('../helpers');
+const { getGrowthInfo, getEffectiveWatersNeeded } = require('../helpers');
 
 // Builds the JSON state payload sent to overlay clients.
 // Shape stays stable across Option 1 (emoji renderer) and Option 2 (sprite renderer)
@@ -17,17 +17,19 @@ function buildState() {
   return {
     slotCount,
     slots: rows.map(s => {
+      const fertilized = db.hasSlotBuff(s.slot, 'fertilizer');
       if (!s.plant_id) {
-        return { slot: s.slot, empty: true };
+        return { slot: s.slot, empty: true, fertilized };
       }
       const info = getGrowthInfo(s);
       if (!info) {
-        return { slot: s.slot, empty: true, unknown: true };
+        return { slot: s.slot, empty: true, unknown: true, fertilized };
       }
-      const watersNeeded = info.isBloom ? 0 : getWatersNeededWithUpgrade(info.watersNeeded);
+      const watersNeeded = info.isBloom ? 0 : getEffectiveWatersNeeded(s.slot, info.watersNeeded);
       return {
         slot: s.slot,
         empty: false,
+        fertilized,
         plant_id: info.plant.id,
         name: info.plant.name,
         emoji: info.plant.emoji,

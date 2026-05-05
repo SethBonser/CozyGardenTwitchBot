@@ -14,18 +14,29 @@ function getPlant(id) {
 // Weights: common 60%, uncommon 30%, rare 10%
 const RARITY_WEIGHTS = { common: 60, uncommon: 30, rare: 10 };
 
-function rollSeed(forcedRarity = null) {
-  let pool;
-  if (forcedRarity) {
-    pool = plants.filter(p => p.rarity === forcedRarity);
+// rollSeed accepts:
+//   null/undefined            → default 60/30/10 (basic seed)
+//   string ('common'|...)     → 100% that rarity
+//   object { common, uncommon, rare } with fractions summing to 1.0 → weighted
+function rollSeed(rarity = null) {
+  let chosen;
+  if (typeof rarity === 'string') {
+    chosen = rarity;
+  } else if (rarity && typeof rarity === 'object') {
+    const roll = Math.random();
+    let acc = 0;
+    for (const r of ['common', 'uncommon', 'rare']) {
+      acc += (rarity[r] || 0);
+      if (roll < acc) { chosen = r; break; }
+    }
+    chosen = chosen || 'rare'; // fallback if weights don't sum to 1
   } else {
     const roll = Math.random() * 100;
-    let rarity;
-    if (roll < 60) rarity = 'common';
-    else if (roll < 90) rarity = 'uncommon';
-    else rarity = 'rare';
-    pool = plants.filter(p => p.rarity === rarity);
+    if (roll < 60) chosen = 'common';
+    else if (roll < 90) chosen = 'uncommon';
+    else chosen = 'rare';
   }
+  const pool = plants.filter(p => p.rarity === chosen);
   if (!pool.length) return plants[0];
   return pool[Math.floor(Math.random() * pool.length)];
 }
@@ -92,7 +103,17 @@ function rarityLabel(rarity) {
 // ─── Fuzzy name matching ──────────────────────────────────────────────────────
 
 const SHOP_ITEMS = [
-  { id: 'copper_can',    name: 'Copper Can',    aliases: ['copper', 'coppercan'] },
+  // Action items — same actions available via the standalone commands /
+  // channel rewards. Listed here so they show up in !shop and !buy works.
+  { id: 'seed',          name: 'Get a Seed',     aliases: ['seed', 'getseed', 'randomseed'] },
+  { id: 'uncommon_seed', name: 'Uncommon Seed',  aliases: ['uncommon', 'uncommonseed', 'midseed', 'mid'] },
+  { id: 'rare_seed',     name: 'Rare Seed',      aliases: ['rare', 'rareseed'] },
+  { id: 'water',        name: 'Water Plant',   aliases: ['water', 'waterplant'] },
+  { id: 'harvest',      name: 'Harvest',       aliases: ['harvest', 'harvestplant'] },
+  { id: 'expand',       name: 'Expand Garden', aliases: ['expand', 'expandgarden', 'expandplot'] },
+  { id: 'fertilize',    name: 'Fertilize',     aliases: ['fertilize', 'fertilizer', 'fert'] },
+  // Upgrades + consumables
+  { id: 'copper_can',   name: 'Copper Can',    aliases: ['copper', 'coppercan'] },
   { id: 'silver_can',   name: 'Silver Can',    aliases: ['silver', 'silvercan'] },
   { id: 'compost_bin',  name: 'Compost Bin',   aliases: ['compost', 'compostbin'] },
   { id: 'rain_cloud',   name: 'Rain Cloud',    aliases: ['rain', 'raincloud', 'cloud'] },
@@ -160,6 +181,17 @@ function getWatersNeededWithUpgrade(baseWaters) {
   return baseWaters;
 }
 
+// Slot-aware version: applies stream-wide upgrades (Compost Bin) AND any
+// per-slot buffs (fertilizer halves the requirement, rounded up, min 1).
+function getEffectiveWatersNeeded(slot, baseWaters) {
+  const { hasSlotBuff } = require('./db');
+  let n = getWatersNeededWithUpgrade(baseWaters);
+  if (hasSlotBuff(slot, 'fertilizer')) {
+    n = Math.max(1, Math.ceil(n / 2));
+  }
+  return n;
+}
+
 module.exports = {
   getPlant,
   rollSeed,
@@ -171,6 +203,7 @@ module.exports = {
   SHOP_ITEMS,
   getCooldownMs,
   getWatersNeededWithUpgrade,
+  getEffectiveWatersNeeded,
   parseSlot,
   extractSlot,
   STAGE_EMOJIS,

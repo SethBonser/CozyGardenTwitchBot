@@ -13,15 +13,18 @@ const BOX_HEIGHT     = 36;   // Height of the wooden raised garden box at the bo
 const PLANK_THICK    = 5;    // Wood plank thickness
 const INFO_HEIGHT    = 56;   // Height of the info strip below the bed
 const INFO_GAP       = 8;    // Space between box and info strip
-const BASE_SPRITE    = 64;   // Display size for fully-grown bloom sprite (2× of 32×32 native)
+const BASE_SPRITE    = 64;   // Display size for fully-grown bloom sprite (1:1 with 64×64 native art)
 
-// Per-stage sprite scale multipliers (applied to BASE_SPRITE). Even though every
-// sprite is the same 32×32 native resolution, scaling by stage gives a clear
-// sense of the plant growing taller as it matures.
-//   stage 0 (seed):    full size, but Y-offset buries it in the dirt
-//   stage 1 (sprout):  50% — small sapling
-//   stage 2 (budding): 75% — getting there
-//   stage 3 (bloom):   100% — full grown
+// Per-stage sprite scale multipliers (applied to BASE_SPRITE). Every sprite is
+// the same native resolution; scaling by stage gives a clear sense of growth
+// without needing different art per size.
+//   With 64×64 native sources:
+//     stage 0 (seed):    1.00× → 64px (1:1, pixel-perfect)
+//     stage 1 (sprout):  0.50× → 32px (clean 1:2 downscale, every other pixel)
+//     stage 2 (budding): 0.75× → 48px (non-integer 4:3 downscale, slight pixel
+//                                       inconsistency — switch to [0.5, 0.5, 1.0]
+//                                       for fully-clean integer scales if desired)
+//     stage 3 (bloom):   1.00× → 64px (1:1, pixel-perfect)
 const PLANT_SCALE_BY_STAGE = [1.0, 0.5, 0.75, 1.0];
 
 // Stage emojis used when a sprite isn't available (fallback rendering).
@@ -37,29 +40,47 @@ const STAGE_SPRITE_NAMES = ['seed', 'sprout', 'budding', 'bloom'];
 
 // Maps a plant's `id` (lowercase) to its sprite folder (PascalCase) under
 // `/sprites/`. Folder names match the actual on-disk layout in data/Sprites.
+// Plants whose sprites haven't been authored yet are listed here too — the
+// renderer's emoji fallback kicks in for any folder that 404s.
 const PLANT_SPRITE_FOLDERS = {
-  bluebell:      'Bluebell',
-  bonsai:        'Bonsai',
-  cactus:        'Cactus',
-  cherryblossom: 'CherryBlossom',
-  clover:        'Clover',
-  crystalrose:   'CrystalRose',
-  daisy:         'Daisy',
-  dandelion:     'Dandelion',
-  fern:          'Fern',
-  frostflower:   'FrostFlower',
-  galaxyrose:    'GalaxyRose',
-  hyacinth:      'Hyacinth',
-  lavender:      'Lavender',
-  lotus:         'Lotus',
-  maple:         'Maple',
-  moonflower:    'Moonflower',
-  mushroom:      'Mushroom',
-  phoenixlily:   'PhoenixLily',
-  poppy:         'Poppy',
-  pumpkin:       'Pumpkin',
-  sunflower:     'Sunflower',
-  tulip:         'Tulip',
+  // Common
+  dandelion:      'Dandelion',
+  daisy:          'Daisy',
+  sunflower:      'Sunflower',
+  marigold:       'Marigold',
+  tulip:          'Tulip',
+  daffodil:       'Daffodil',
+  cosmo:          'Cosmo',
+  petunia:        'Petunia',
+  zinnia:         'Zinnia',
+  dahlia:         'Dahlia',
+  peony:          'Peony',
+  coneflower:     'Coneflower',
+  impatiens:      'Impatiens',
+  pansy:          'Pansy',
+  mum:            'Mum',
+  // Uncommon
+  rose:           'Rose',
+  snapdragon:     'Snapdragon',
+  lavender:       'Lavender',
+  lily:           'Lily',
+  fuchsia:        'Fuchsia',
+  sweetpeas:      'SweetPeas',
+  hydrangea:      'Hydrangea',
+  gardenia:       'Gardenia',
+  hyacinth:       'Hyacinth',
+  poppy:          'Poppy',
+  // Rare
+  freesia:        'Freesia',
+  orchid:         'Orchid',
+  bluepoppy:      'BluePoppy',
+  batflower:      'BatFlower',
+  chocolatecosmo: 'ChocolateCosmo',
+  verbena:        'Verbena',
+  bluebells:      'Bluebells',
+  honeywort:      'Honeywort',
+  vinca:          'Vinca',
+  passiflora:     'Passiflora',
 };
 
 // ─── Sprite cache ────────────────────────────────────────────────────────────
@@ -94,13 +115,29 @@ const canvas = document.getElementById('garden');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
+// Device pixel ratio — high-DPI / scaled displays (and OBS at higher
+// canvas resolutions) need the backing buffer to be larger than the CSS
+// size so text and edges stay crisp instead of being upscaled blurry.
+const DPR = window.devicePixelRatio || 1;
+
 let currentState = null;
 
 function resizeCanvasFor(slotCount) {
-  const w = PADDING_X * 2 + slotCount * TILE_SIZE + Math.max(0, slotCount - 1) * TILE_GAP;
-  const h = PADDING_Y * 2 + BED_HEIGHT + INFO_GAP + INFO_HEIGHT;
-  canvas.width = Math.max(w, 200);
-  canvas.height = h;
+  const logicalW = Math.max(
+    PADDING_X * 2 + slotCount * TILE_SIZE + Math.max(0, slotCount - 1) * TILE_GAP,
+    200
+  );
+  const logicalH = PADDING_Y * 2 + BED_HEIGHT + INFO_GAP + INFO_HEIGHT;
+
+  // Backing buffer is DPR-scaled; CSS size stays at logical px so layout
+  // doesn't change. setTransform applies the DPR scale exactly once so every
+  // draw call below can keep using logical coordinates.
+  canvas.width  = logicalW * DPR;
+  canvas.height = logicalH * DPR;
+  canvas.style.width  = logicalW + 'px';
+  canvas.style.height = logicalH + 'px';
+
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   ctx.imageSmoothingEnabled = false;
 }
 
@@ -138,7 +175,9 @@ connect();
 
 function render() {
   if (!currentState) return;
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Clear in logical coords — canvas.width is DPR-scaled, the active transform
+  // already multiplies by DPR, so divide back to logical pixels.
+  ctx.clearRect(0, 0, canvas.width / DPR, canvas.height / DPR);
 
   const { slots } = currentState;
   if (!slots.length) return;
@@ -282,10 +321,11 @@ function drawSlotInfo(ctx, x, y, slot) {
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
 
-  // Line 1 — slot number
+  // Line 1 — slot number (with ✨ indicator if fertilized)
   ctx.font = 'bold 11px system-ui, sans-serif';
   ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-  ctx.fillText(`Slot ${slot.slot}`, cx, y + 5);
+  const slotLabel = slot.fertilized ? `Slot ${slot.slot} ✨` : `Slot ${slot.slot}`;
+  ctx.fillText(slotLabel, cx, y + 5);
 
   // Line 2 — plant name (or "empty")
   const name = slot.empty ? 'empty' : (slot.name || 'unknown');
@@ -293,12 +333,18 @@ function drawSlotInfo(ctx, x, y, slot) {
   ctx.fillStyle = slot.empty ? 'rgba(255, 255, 255, 0.5)' : '#fff';
   ctx.fillText(name, cx, y + 21);
 
-  // Line 3 — stage (only when planted; bloom is gold)
+  // Line 3 — stage (only when planted; bloom is gold). Empty + fertilized
+  // shows a subtle "fertilized" hint instead so streamers / viewers see why
+  // the slot is special.
   if (!slot.empty) {
     const stage = STAGE_NAMES[Math.min(slot.stage, 3)];
     ctx.font = 'bold 10px system-ui, sans-serif';
     ctx.fillStyle = slot.isBloom ? '#ffe478' : 'rgba(255, 255, 255, 0.7)';
     ctx.fillText(stage, cx, y + 38);
+  } else if (slot.fertilized) {
+    ctx.font = 'bold 10px system-ui, sans-serif';
+    ctx.fillStyle = '#a4e0a4';
+    ctx.fillText('Fertilized', cx, y + 38);
   }
 }
 
