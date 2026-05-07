@@ -221,6 +221,46 @@ client.on('message', (chan, userstate, message, self) => {
       cmdBuy(client, chan, userstate, args, buildShopContext());
       break;
 
+    // ── Single-word buy shortcuts ─────────────────────────────────────────────
+    // Each one prepends the item name to args so slot numbers still work:
+    //   !buyfertilize 2  →  cmdBuy(... ['fertilize', '2'] ...)
+    case '!buyseed':
+      cmdBuy(client, chan, userstate, ['seed', ...args], buildShopContext());
+      break;
+    case '!buyuncommon':
+      cmdBuy(client, chan, userstate, ['uncommon', 'seed', ...args], buildShopContext());
+      break;
+    case '!buyrare':
+      cmdBuy(client, chan, userstate, ['rare', 'seed', ...args], buildShopContext());
+      break;
+    case '!buywater':
+      cmdBuy(client, chan, userstate, ['water', ...args], buildShopContext());
+      break;
+    case '!buyharvest':
+      cmdBuy(client, chan, userstate, ['harvest', ...args], buildShopContext());
+      break;
+    case '!buyexpand':
+      cmdBuy(client, chan, userstate, ['expand', ...args], buildShopContext());
+      break;
+    case '!buyfertilize':
+      cmdBuy(client, chan, userstate, ['fertilize', ...args], buildShopContext());
+      break;
+    case '!buyrain':
+      cmdBuy(client, chan, userstate, ['rain', 'cloud', ...args], buildShopContext());
+      break;
+    case '!buytonic':
+      cmdBuy(client, chan, userstate, ['growth', 'tonic', ...args], buildShopContext());
+      break;
+    case '!buycompost':
+      cmdBuy(client, chan, userstate, ['compost', 'bin', ...args], buildShopContext());
+      break;
+    case '!buycopper':
+      cmdBuy(client, chan, userstate, ['copper', 'can', ...args], buildShopContext());
+      break;
+    case '!buysilver':
+      cmdBuy(client, chan, userstate, ['silver', 'can', ...args], buildShopContext());
+      break;
+
     case '!gardenhelp':
       client.say(chan, gardenHelpMessage());
       break;
@@ -234,9 +274,9 @@ client.on('message', (chan, userstate, message, self) => {
 
 function gardenHelpMessage() {
   if (USE_CHANNEL_REWARDS) {
-    return '🌿 Commands: !garden [slot] | !seed | !plant [slot] | !discard | !petals | !gardeners | !shop | !buy <item> — Channel Rewards: Get Seed | Water Plant | Harvest Plant | Expand Garden';
+    return '🌿 Commands: !garden [slot] | !seed | !plant [slot] | !discard | !petals | !gardeners | !shop | !buyseed !buyuncommon !buyrare !buywater !buyfertilize [slot] !buyrain !buytonic [slot] !buycompost !buyexpand — Channel Rewards: Get Seed | Water Plant | Harvest Plant | Expand Garden';
   }
-  return `🌿 Commands: !startgarden (start with ${STARTER_PETALS}🌸) | !buy seed (${SEED_COST}🌸) | !buy uncommon seed (${UNCOMMON_SEED_COST}🌸) | !buy rare seed (${RARE_SEED_COST}🌸) | !plant [slot] | !water [slot] (${WATER_COST}🌸) | !harvest [slot] | !expand (next: ${getExpandCost()}🌸) | !seed | !discard | !garden [slot] | !petals | !gardeners | !shop`;
+  return `🌿 Commands: !startgarden (${STARTER_PETALS}🌸) | !buyseed (${SEED_COST}🌸) | !buyuncommon (${UNCOMMON_SEED_COST}🌸) | !buyrare (${RARE_SEED_COST}🌸) | !buywater (${WATER_COST}🌸) | !buyfertilize [slot] | !buyrain | !buytonic [slot] | !plant [slot] | !harvest [slot] | !expand | !garden [slot] | !seed | !petals | !gardeners | !shop`;
 }
 
 function cmdStartGarden(client, chan, userstate) {

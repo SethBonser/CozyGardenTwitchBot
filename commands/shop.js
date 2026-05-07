@@ -130,7 +130,7 @@ function cmdShop(client, channel, userstate, ctx = {}) {
     `🛒 Cozy Garden Shop — ${renderCategory('seeds')} || ${renderCategory('garden')}`
   );
   client.say(channel,
-    `🛒 ${renderCategory('tools')} || ${renderCategory('boosts')} || Use !buy <name> [slot] to purchase.`
+    `🛒 ${renderCategory('tools')} || ${renderCategory('boosts')} || Use !buyseed !buyrare !buywater !buyharvest !buyrain !buytonic [slot] !buyfertilize [slot] !buyexpand etc, or !buy <name> [slot]`
   );
 }
 
@@ -140,7 +140,7 @@ function cmdBuy(client, channel, userstate, args, ctx = {}) {
   const username = userstate.username;
 
   if (!args.length) {
-    return client.say(channel, `@${username} ❓ Usage: !buy <item name> — e.g. !buy seed, !buy water 2, !buy growth tonic 2`);
+    return client.say(channel, `@${username} ❓ Usage: !buyseed | !buyrare | !buywater 2 | !buytonic 2 | !buyfertilize 2 — or !buy <name> [slot]. See !shop for all items.`);
   }
 
   // Last arg might be a slot number (for growth tonic, water, harvest) — must
