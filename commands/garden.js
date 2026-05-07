@@ -69,7 +69,7 @@ function cmdWater(client, channel, userstate, args) {
   const lastWatered = db.getLastWatered(username);
   const elapsed = Date.now() - lastWatered;
 
-  if (elapsed < cooldownMs) {
+  if (cooldownMs > 0 && elapsed < cooldownMs) {
     const remaining = Math.ceil((cooldownMs - elapsed) / 1000);
     const mins = Math.floor(remaining / 60);
     const secs = remaining % 60;

@@ -122,6 +122,240 @@ const DPR = window.devicePixelRatio || 1;
 
 let currentState = null;
 
+// ─── Stage transition animations ─────────────────────────────────────────────
+// When a plant advances a stage the overlay plays a short pop+sparkle animation.
+// Each entry lives until its duration expires; the animate() loop naturally cleans
+// them up via drawTransitionEffect().
+
+const TRANSITION_DURATION = 900;  // ms — total length of the pop + particle effect
+const stageTransitions = new Map(); // slot number → { startTime, particles }
+
+const HARVEST_DURATION = 1400;    // ms — shake, rise, and fade-out
+const harvestAnimations = new Map(); // slot number → { startTime, slot (snapshot), dirtParticles, trailParticles }
+
+const WATER_DURATION = 1100;     // ms — droplets fall + ripple fades
+const waterAnimations = new Map(); // slot number → { startTime, slotNum, particles }
+
+function generateParticles() {
+  const colors = ['#ffe478', '#ffffff', '#a4e0a4', '#5fc7ff', '#ffb3d9'];
+  const count = 10;
+  const particles = [];
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
+    const speed = 28 + Math.random() * 28;
+    particles.push({
+      vx:    Math.cos(angle) * speed,
+      vy:    Math.sin(angle) * speed - 15,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      size:  1.5 + Math.random() * 1.5,
+    });
+  }
+  return particles;
+}
+
+// Spring-pop easing: ramps up to ~1.35× then bounces back to 1.0×.
+function popEase(t) {
+  const peak = 0.25;
+  if (t < peak) return 1 + (t / peak) * 0.35;
+  const s = (t - peak) / (1 - peak);
+  return 1 + Math.exp(-s * 6) * Math.cos(s * Math.PI * 2.8) * 0.35;
+}
+
+// ─── Harvest animations ───────────────────────────────────────────────────────
+// When a bloomed plant is harvested the overlay plays a pull-out animation:
+// the plant shakes briefly, then rockets upward out of the frame while dirt
+// clumps scatter from the base and golden sparkles trail behind it.
+
+function generateHarvestDirtParticles() {
+  const colors = ['#5a3d24', '#4a3018', '#7a5033', '#6b4526', '#8a6040'];
+  const particles = [];
+  for (let i = 0; i < 10; i++) {
+    const side = i % 2 === 0 ? 1 : -1;
+    const spread = (Math.random() * 0.5 + 0.1) * Math.PI; // ~18°–90° arc each side
+    const speed = 28 + Math.random() * 32;
+    particles.push({
+      vx: side * Math.cos(spread) * speed,
+      vy: -Math.sin(spread) * speed * 0.6,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      size: 1.5 + Math.random() * 2.5,
+    });
+  }
+  return particles;
+}
+
+function generateHarvestTrailParticles() {
+  const colors = ['#ffe478', '#ffd700', '#ffffff', '#ffb3d9', '#ffe0b2', '#a4e0a4'];
+  const duration = HARVEST_DURATION / 1000;
+  const particles = [];
+  for (let i = 0; i < 14; i++) {
+    const delay = 0.18 + i * 0.055; // staggered 55 ms apart, starting at 180 ms
+    particles.push({
+      delay,
+      tAtSpawn: delay / duration,   // normalized t when this particle spawns
+      ox: (Math.random() - 0.5) * 32,
+      vx: (Math.random() - 0.5) * 22,
+      vy: -(8 + Math.random() * 18),
+      color: colors[Math.floor(Math.random() * colors.length)],
+      size: 1 + Math.random() * 2.5,
+    });
+  }
+  return particles;
+}
+
+// Returns {dx, dy} canvas offset for the plant at normalized time t (0 → 1).
+// Phase 1 (t < 0.15): rapid horizontal shake while barely lifting.
+// Phase 2 (t ≥ 0.15): quadratic acceleration upward with a settling wobble.
+function harvestLiftOffset(t) {
+  if (t < 0.15) {
+    const st = t / 0.15;
+    return {
+      dx: Math.sin(st * Math.PI * 6) * 5 * (1 - st * 0.5),
+      dy: -st * 10,
+    };
+  }
+  const rt = (t - 0.15) / 0.85;
+  return {
+    dx: Math.sin(rt * Math.PI * 2.5) * 3 * Math.exp(-rt * 4),
+    dy: -10 - rt * rt * 200, // ~210 px total upward travel
+  };
+}
+
+function drawHarvestAnimation(ctx, x, y, ha) {
+  const elapsed = (performance.now() - ha.startTime) / 1000;
+  const duration = HARVEST_DURATION / 1000;
+  const t = elapsed / duration;
+
+  if (t >= 1) {
+    harvestAnimations.delete(ha.slot.slot);
+    return;
+  }
+
+  const { dx, dy } = harvestLiftOffset(Math.min(t, 1));
+  const cx      = x + TILE_SIZE / 2;
+  const dirtTop = y + BED_HEIGHT - BOX_HEIGHT + PLANK_THICK;
+  const stageScale = PLANT_SCALE_BY_STAGE[Math.min(ha.slot.stage, 3)];
+  const plantBaseY = dirtTop + 4 - BASE_SPRITE * stageScale; // top of bloom sprite at rest
+
+  // Dirt clumps — burst outward from the base in the first 45 % of the animation
+  if (elapsed < duration * 0.5) {
+    const dirtAlpha = Math.max(0, 1 - t / 0.45);
+    for (const p of ha.dirtParticles) {
+      const px = cx + p.vx * elapsed;
+      const py = dirtTop + p.vy * elapsed + 80 * elapsed * elapsed; // gravity
+      ctx.save();
+      ctx.globalAlpha = dirtAlpha;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(px, py, p.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // Golden trail sparkles — staggered particles that spawn at the plant's rising
+  // position and drift away, fading over ~400 ms each.
+  for (const p of ha.trailParticles) {
+    if (elapsed < p.delay) continue;
+    const pt = elapsed - p.delay;
+    if (pt > 0.55) continue;
+    const { dx: sdx, dy: sdy } = harvestLiftOffset(p.tAtSpawn);
+    const px = cx + sdx + p.ox + p.vx * pt;
+    const py = plantBaseY + sdy + p.vy * pt + 15 * pt * pt; // slight gravity
+    const alpha = Math.max(0, 1 - pt / 0.4);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(px, py, p.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Plant — translated upward, fading out in the final quarter
+  ctx.save();
+  ctx.translate(dx, dy);
+  if (t > 0.75) ctx.globalAlpha = Math.max(0, 1 - (t - 0.75) / 0.25);
+  const path   = spritePathFor(ha.slot);
+  const sprite = path ? getSprite(path) : null;
+  if (sprite && sprite.status === 'ok') {
+    drawPlantSprite(ctx, x, y, sprite.img, ha.slot, 1);
+  } else {
+    drawPlantEmojiFallback(ctx, x, y, ha.slot, 1);
+  }
+  ctx.restore();
+}
+
+// ─── Water animations ─────────────────────────────────────────────────────────
+// When a slot is watered, droplets fall from the top of the column and leave
+// brief elliptical ripples where they hit the dirt.
+
+function generateWaterDroplets() {
+  const fallDist = BED_HEIGHT - BOX_HEIGHT + PLANK_THICK; // px from drop-start to dirtTop
+  const particles = [];
+  for (let i = 0; i < 9; i++) {
+    const speed = 110 + Math.random() * 70; // px / s
+    particles.push({
+      delay:      i * 0.065 + Math.random() * 0.02,
+      ox:         (Math.random() - 0.5) * TILE_SIZE * 0.55,
+      speed,
+      flightTime: fallDist / speed,
+      size:       1.5 + Math.random() * 1.5,
+    });
+  }
+  return particles;
+}
+
+function drawWaterAnimation(ctx, x, y, wa) {
+  const elapsed = (performance.now() - wa.startTime) / 1000;
+  if (elapsed >= WATER_DURATION / 1000) {
+    waterAnimations.delete(wa.slotNum);
+    return;
+  }
+
+  const cx         = x + TILE_SIZE / 2;
+  const dropStartY = y + 2;                                   // just inside the top of the tile
+  const dirtTop    = y + BED_HEIGHT - BOX_HEIGHT + PLANK_THICK;
+  const fallDist   = dirtTop - dropStartY;
+
+  for (const p of wa.particles) {
+    const pt = elapsed - p.delay;
+    if (pt <= 0) continue;
+
+    if (pt < p.flightTime) {
+      // In flight — circle with a short motion-streak above it
+      const dropX = cx + p.ox;
+      const dropY = dropStartY + (pt / p.flightTime) * fallDist;
+      ctx.save();
+      ctx.globalAlpha = 0.88;
+      ctx.fillStyle = '#5fc7ff';
+      ctx.beginPath();
+      ctx.arc(dropX, dropY, p.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(95, 199, 255, 0.4)';
+      ctx.lineWidth = p.size * 0.9;
+      ctx.beginPath();
+      ctx.moveTo(dropX, dropY - p.size * 1.2);
+      ctx.lineTo(dropX, dropY - p.size * 4);
+      ctx.stroke();
+      ctx.restore();
+    } else {
+      // Landed — flat elliptical ripple that expands and fades
+      const st  = pt - p.flightTime;
+      const dur = 0.28;
+      if (st > dur) continue;
+      const sf = st / dur;
+      ctx.save();
+      ctx.globalAlpha = (1 - sf) * 0.6;
+      ctx.strokeStyle = '#5fc7ff';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.ellipse(cx + p.ox, dirtTop - 1, sf * 7, sf * 2.5, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+}
+
 function resizeCanvasFor(slotCount) {
   const logicalW = Math.max(
     PADDING_X * 2 + slotCount * TILE_SIZE + Math.max(0, slotCount - 1) * TILE_GAP,
@@ -149,6 +383,38 @@ function connect() {
     try {
       const msg = JSON.parse(ev.data);
       if (msg.type === 'state') {
+        // Detect stage advances before swapping state
+        if (currentState) {
+          for (const newSlot of msg.data.slots) {
+            const prev = currentState.slots.find(s => s.slot === newSlot.slot);
+            // Stage advance → pop + sparkle
+            if (prev && !prev.empty && !newSlot.empty && newSlot.stage > prev.stage) {
+              stageTransitions.set(newSlot.slot, {
+                startTime: performance.now(),
+                particles: generateParticles(),
+              });
+            }
+            // Harvest → pull-out animation (snapshot the bloom before state updates)
+            if (prev && !prev.empty && newSlot.empty) {
+              harvestAnimations.set(newSlot.slot, {
+                startTime:      performance.now(),
+                slot:           { ...prev },
+                dirtParticles:  generateHarvestDirtParticles(),
+                trailParticles: generateHarvestTrailParticles(),
+              });
+            }
+            // Watering → droplets fall onto the slot
+            if (prev && !prev.empty && !newSlot.empty &&
+                newSlot.stage === prev.stage &&
+                newSlot.watersDone > prev.watersDone) {
+              waterAnimations.set(newSlot.slot, {
+                startTime: performance.now(),
+                slotNum:   newSlot.slot,
+                particles: generateWaterDroplets(),
+              });
+            }
+          }
+        }
         currentState = msg.data;
         resizeCanvasFor(currentState.slotCount);
         render();
@@ -190,21 +456,34 @@ function render() {
   // 1. Wooden raised garden box at the bottom of the bed (sky above is left transparent)
   drawGardenBox(ctx, bedX, bedY, bedW, bedH);
 
-  // 2. Subtle bloom highlights inside the bed for harvest-ready slots
+  // 2. Subtle bloom highlights inside the bed for harvest-ready slots.
+  //    During a harvest animation the highlight fades out with the plant.
   for (let i = 0; i < slots.length; i++) {
+    const slotX = bedX + i * (TILE_SIZE + TILE_GAP);
+    const ha = harvestAnimations.get(slots[i].slot);
     if (slots[i].isBloom) {
-      const slotX = bedX + i * (TILE_SIZE + TILE_GAP);
       drawBloomHighlight(ctx, slotX, bedY, TILE_SIZE, bedH);
+    } else if (ha) {
+      const ht = Math.min((performance.now() - ha.startTime) / HARVEST_DURATION, 1);
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, 1 - ht);
+      drawBloomHighlight(ctx, slotX, bedY, TILE_SIZE, bedH);
+      ctx.restore();
     }
   }
 
-  // 3. Water dots in the dirt + plant sprites for each occupied slot
+  // 3. Water dots in the dirt + plant sprites for each occupied slot.
+  //    Harvest animation overrides normal rendering for the departing slot.
   for (let i = 0; i < slots.length; i++) {
     const slotX = bedX + i * (TILE_SIZE + TILE_GAP);
-    if (!slots[i].empty) {
+    if (harvestAnimations.has(slots[i].slot)) {
+      drawHarvestAnimation(ctx, slotX, bedY, harvestAnimations.get(slots[i].slot));
+    } else if (!slots[i].empty) {
       drawWaterProgress(ctx, slotX, bedY, slots[i]);
       drawPlant(ctx, slotX, bedY, slots[i]);
     }
+    const wa = waterAnimations.get(slots[i].slot);
+    if (wa) drawWaterAnimation(ctx, slotX, bedY, wa);
   }
 
   // 4. Info strip below the bed: slot # / plant name / stage per column
@@ -212,8 +491,8 @@ function render() {
   drawInfoStrip(ctx, bedX, infoY, bedW, INFO_HEIGHT);
   for (let i = 0; i < slots.length; i++) {
     const slotX = bedX + i * (TILE_SIZE + TILE_GAP);
-    drawSlotInfo(ctx, slotX, infoY, slots[i]);
-    // Vertical divider between columns (skip last)
+    const ha    = harvestAnimations.get(slots[i].slot);
+    drawSlotInfo(ctx, slotX, infoY, ha ? ha.slot : slots[i]);
     if (i < slots.length - 1) {
       drawColumnDivider(ctx, slotX + TILE_SIZE, infoY, INFO_HEIGHT);
     }
@@ -222,8 +501,13 @@ function render() {
 
 // Continuous animation loop — drives the wind sway. requestAnimationFrame
 // pauses automatically when the OBS Browser Source isn't visible.
+// The try/catch prevents a one-off render error from killing the loop.
 function animate() {
-  render();
+  try {
+    render();
+  } catch (err) {
+    console.error('Garden overlay render error:', err);
+  }
   requestAnimationFrame(animate);
 }
 requestAnimationFrame(animate);
@@ -349,13 +633,77 @@ function drawSlotInfo(ctx, x, y, slot) {
 }
 
 function drawPlant(ctx, x, y, slot) {
-  const path = spritePathFor(slot);
-  const sprite = path ? getSprite(path) : null;
-  if (sprite && sprite.status === 'ok') {
-    drawPlantSprite(ctx, x, y, sprite.img, slot);
-  } else {
-    drawPlantEmojiFallback(ctx, x, y, slot);
+  const tr = stageTransitions.get(slot.slot);
+  let transitionScale = 1;
+  if (tr) {
+    const t = (performance.now() - tr.startTime) / TRANSITION_DURATION;
+    if (t < 1) {
+      transitionScale = popEase(t);
+    } else {
+      stageTransitions.delete(slot.slot);
+    }
   }
+
+  // save/restore isolates ALL canvas state changes (transform, globalAlpha,
+  // fillStyle, font, etc.) so nothing leaks into subsequent slot renders.
+  ctx.save();
+  try {
+    const path = spritePathFor(slot);
+    const sprite = path ? getSprite(path) : null;
+    if (sprite && sprite.status === 'ok') {
+      drawPlantSprite(ctx, x, y, sprite.img, slot, transitionScale);
+    } else {
+      drawPlantEmojiFallback(ctx, x, y, slot, transitionScale);
+    }
+
+    if (tr) {
+      drawTransitionEffect(ctx, x, y, slot, tr);
+    }
+  } finally {
+    ctx.restore();
+  }
+}
+
+function drawTransitionEffect(ctx, x, y, slot, tr) {
+  const elapsed = (performance.now() - tr.startTime) / 1000;
+  const duration = TRANSITION_DURATION / 1000;
+
+  // Plant visual center — used as the particle/flash origin
+  const cx = x + TILE_SIZE / 2;
+  const dirtTop = y + BED_HEIGHT - BOX_HEIGHT + PLANK_THICK;
+  const stageScale = PLANT_SCALE_BY_STAGE[Math.min(slot.stage, 3)];
+  const drawSize = BASE_SPRITE * stageScale;
+  const cy = dirtTop + 4 - drawSize * 0.6;
+
+  // Flash ring: expands quickly and fades out in the first ~30% of the animation
+  const flashT = Math.min(elapsed / (duration * 0.3), 1);
+  if (flashT < 1) {
+    const ringRadius = flashT * 28;
+    const ringAlpha  = (1 - flashT) * 0.7;
+    ctx.save();
+    ctx.globalAlpha = ringAlpha;
+    ctx.strokeStyle = '#ffe478';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(cx, cy, ringRadius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Sparkle particles: fly out then fade
+  const fadeCutoff = duration * 0.75;
+  ctx.save();
+  for (const p of tr.particles) {
+    const px = cx + p.vx * elapsed;
+    const py = cy + p.vy * elapsed + 40 * elapsed * elapsed; // gravity
+    const alpha = Math.max(0, 1 - elapsed / fadeCutoff);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(px, py, p.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 }
 
 // How hard each stage sways. Seeds don't sway (they're in the ground); blooms
@@ -367,13 +715,9 @@ const SWAY_INTENSITY_BY_STAGE = [0, 0.020, 0.025, 0.035];
 // buried in the soil; growing plants stay rooted at the dirt surface.
 const Y_OFFSET_BY_STAGE = [30, 0, 0, 0];
 
-function drawPlantSprite(ctx, x, y, img, slot) {
-  // Scale the sprite by stage so saplings are always visibly smaller than
-  // budding/bloom even though every sprite shares the same 32×32 native size.
-  // BASE_SPRITE (64) is the bloom display size — exact 2× of the 32×32 source.
-  // Sprout = 0.5× (32, perfectly 1× of native) and Budding = 0.75× (48).
+function drawPlantSprite(ctx, x, y, img, slot, transitionScale = 1) {
   const stageScale = PLANT_SCALE_BY_STAGE[Math.min(slot.stage, 3)];
-  const drawSize = Math.round(BASE_SPRITE * stageScale);
+  const drawSize = Math.round(BASE_SPRITE * stageScale * transitionScale);
 
   // Center horizontally in the column
   const drawX = x + Math.round((TILE_SIZE - drawSize) / 2);
@@ -405,16 +749,14 @@ function drawPlantSprite(ctx, x, y, img, slot) {
   }
 }
 
-function drawPlantEmojiFallback(ctx, x, y, slot) {
-  // Used while sprites are still loading or if a file is missing. Same logic
-  // the overlay shipped with originally.
+function drawPlantEmojiFallback(ctx, x, y, slot, transitionScale = 1) {
   const emoji = slot.isBloom
     ? slot.emoji
     : STAGE_EMOJIS[Math.min(slot.stage, STAGE_EMOJIS.length - 1)];
 
   const scaleByStage = [0.45, 0.6, 0.75, 1.0];
   const scale = scaleByStage[Math.min(slot.stage, 3)];
-  const fontSize = Math.floor(TILE_SIZE * 0.55 * scale);
+  const fontSize = Math.floor(TILE_SIZE * 0.55 * scale * transitionScale);
 
   ctx.font = `${fontSize}px 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif`;
   ctx.textAlign = 'center';

@@ -12,7 +12,7 @@ A cozy Twitch chatbot with a shared, expanding virtual garden. Viewers redeem ch
 - **Channel-wide harvest payouts** — when anyone harvests a flower, every recently-active chatter shares the petal reward
 - **35 real-world plants across 3 rarities** — common, uncommon, and rare flora with different watering profiles and petal payouts
 - **Botanical fun facts** — every plant comes with a real-world (or in-universe) trivia tidbit revealed when its seed is unwrapped
-- **Live OBS overlay** — a transparent browser-source overlay renders the garden in real time, complete with a wooden raised garden box, custom 64×64 pixel-art sprites, stage-based scaling, and a gentle wind-sway animation
+- **Live OBS overlay** — a transparent browser-source overlay renders the garden in real time, complete with a wooden raised garden box, custom 64×64 pixel-art sprites, stage-based scaling, wind-sway animation, and a pop + sparkle animation whenever a plant advances a stage
 - **Petals economy** — harvest plants to earn 🌸 petals, then spend them in the shop
 - **Stream-wide upgrade & per-viewer consumables** — Compost Bin permanently improves the garden; Rain Cloud and Growth Tonic give one-shot boosts
 - **Persistent state** — SQLite database keeps the garden alive across restarts
@@ -79,6 +79,10 @@ All config lives in `.env`:
 | `OVERLAY_PORT` | optional | Port for the OBS overlay server (default `8080`) |
 | `ACTIVE_VIEWER_WINDOW_MIN` | optional | How recently someone must have chatted to share in a harvest payout, in minutes (default `30`) |
 | `IGNORED_USERS` | optional | Comma-separated list of usernames (other bots) to exclude from activity tracking and harvest rewards. The CozyGardenBot's own account is always ignored. |
+| `WATER_COOLDOWN_ENABLED` | optional | `true` (default) to enforce a per-viewer watering cooldown in petals-only mode; `false` to disable entirely (useful for testing) |
+| `WATER_COOLDOWN_MINUTES` | optional | Base cooldown between waters in petals-only mode, in minutes (default `10`) |
+| `COPPER_CAN_COOLDOWN_MINUTES` | optional | Cooldown once the Copper Can upgrade is purchased (default `8`) |
+| `SILVER_CAN_COOLDOWN_MINUTES` | optional | Cooldown once the Silver Can upgrade is purchased (default `6`) |
 
 ¹ Only used when `USE_CHANNEL_REWARDS=true`. Reward IDs can be left blank initially — the bot will print the UUID to the console the first time someone redeems an unrecognized reward.<br>
 ² Only used when `USE_CHANNEL_REWARDS=false`.<br>
@@ -292,8 +296,8 @@ Aliases that fuzzy-match work too — e.g. `!buy seed`, `!buy rareseed`, `!buy w
 | Item | Cost | Effect |
 |---|---|---|
 | 🪣🌿 Compost Bin | 600 🌸 | All plants need 20% fewer waters per stage |
-| 🪣 Copper Can | 400 🌸 | *Vestigial* — used to reduce a watering cooldown that no longer exists since watering became a channel reward. Kept in the shop for now; safe to ignore. |
-| 🪣✨ Silver Can | 800 🌸 | *Vestigial* — see Copper Can. Requires Copper Can. |
+| 🪣 Copper Can | 400 🌸 | Reduces the watering cooldown from `WATER_COOLDOWN_MINUTES` to `COPPER_CAN_COOLDOWN_MINUTES` (default 10 min → 8 min). Only applies in petals-only mode when `WATER_COOLDOWN_ENABLED=true`. |
+| 🪣✨ Silver Can | 800 🌸 | Reduces the cooldown further to `SILVER_CAN_COOLDOWN_MINUTES` (default 6 min). Requires Copper Can. Same conditions apply. |
 
 ### 🧪 Boosts (per-viewer consumables, single-use)
 
@@ -326,6 +330,7 @@ The bot runs a small HTTP + WebSocket server alongside chat that renders the gar
 The overlay renders one continuous **wooden raised garden box** with all the plants growing inside it. Above the box is fully transparent so the garden feels open against your stream. Each plant column shows:
 
 - A pixel-art **plant sprite** that scales up through stages — sprout (50%) → budding (75%) → bloom (100%) — so growth is always visually obvious even with same-sized source art
+- A **stage transition animation** that plays the moment a plant advances: the sprite springs up to ~1.35× scale then bounces back, a gold ring expands and fades from the plant center, and 10 colored sparkle particles burst outward and fall under gravity. The whole effect lasts 900 ms. The duration is controlled by `TRANSITION_DURATION` at the top of `overlay/public/overlay.js`
 - A subtle **wind sway** animation, anchored at the base of each plant. Seeds stay still (they're underground); blooms sway the most
 - **Water-progress dots** in the dirt strip showing how close the plant is to advancing
 - A warm **golden wash** above any bloomed plant to spotlight that it's harvest-ready

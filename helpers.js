@@ -88,8 +88,9 @@ function formatSlot(slotRow) {
     return `[${slotRow.slot}] ${plant.emoji} ${plant.name} — ${stageEmoji} ${stageName}! Ready to harvest 🌺`;
   }
 
-  const bar = progressBar(watersDone, watersNeeded);
-  return `[${slotRow.slot}] ${plant.emoji} ${plant.name} (${plant.rarity}) — ${stageEmoji} ${stageName} [${bar}] ${watersDone}/${watersNeeded}💧`;
+  const effective = getEffectiveWatersNeeded(slotRow.slot, watersNeeded);
+  const bar = progressBar(watersDone, effective);
+  return `[${slotRow.slot}] ${plant.emoji} ${plant.name} (${plant.rarity}) — ${stageEmoji} ${stageName} [${bar}] ${watersDone}/${effective}💧`;
 }
 
 // ─── Rarity display ───────────────────────────────────────────────────────────
@@ -165,12 +166,14 @@ function extractSlot(text, slotCount) {
 // ─── Cooldown helpers ─────────────────────────────────────────────────────────
 
 function getCooldownMs() {
-  const minutes = parseInt(process.env.WATER_COOLDOWN_MINUTES || '10', 10);
-  // Check upgrade reductions
+  if (process.env.WATER_COOLDOWN_ENABLED === 'false') return 0;
+  const base    = parseInt(process.env.WATER_COOLDOWN_MINUTES        || '10', 10);
+  const copper  = parseInt(process.env.COPPER_CAN_COOLDOWN_MINUTES   || '8',  10);
+  const silver  = parseInt(process.env.SILVER_CAN_COOLDOWN_MINUTES   || '6',  10);
   const { isUpgradePurchased } = require('./db');
-  if (isUpgradePurchased('silver_can')) return 6 * 60 * 1000;
-  if (isUpgradePurchased('copper_can')) return 8 * 60 * 1000;
-  return minutes * 60 * 1000;
+  if (isUpgradePurchased('silver_can')) return silver * 60 * 1000;
+  if (isUpgradePurchased('copper_can')) return copper * 60 * 1000;
+  return base * 60 * 1000;
 }
 
 function getWatersNeededWithUpgrade(baseWaters) {
