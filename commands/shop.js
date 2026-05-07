@@ -99,28 +99,28 @@ function cmdShop(client, channel, userstate, ctx = {}) {
   const useChannelRewards = !!ctx.useChannelRewards;
   const costs = ctx.costs || {};
 
-  // Format a single shop entry into "<emoji> <name> <price>" depending on type
+  // Format a single shop entry into "<name> price>" depending on type
   function formatItem(i) {
     if (i.type === 'action') {
       // petalsOnly actions show their petal price even in channel-rewards mode
-      if (useChannelRewards && !i.petalsOnly) return `${i.emoji} ${i.name} (channel reward)`;
+      if (useChannelRewards && !i.petalsOnly) return `<${i.name} (channel reward)>`;
       const cost = costs[i.actionId];
-      const priceLabel = cost && cost > 0 ? `${cost}🌸` : 'free';
-      return `${i.emoji} ${i.name} ${priceLabel}`;
+      const priceLabel = cost && cost > 0 ? `${cost} petals` : 'free';
+      return `<${i.name} ${priceLabel}>`;
     }
     if (i.type === 'upgrade') {
       const owned = db.isUpgradePurchased(i.id);
-      return `${i.emoji} ${i.name} ${i.cost}🌸${owned ? ' ✅' : ''}`;
+      return `<${i.name} ${i.cost} petals${owned ? ' ✅' : ''}>`;
     }
     // consumable
-    return `${i.emoji} ${i.name} ${i.cost}🌸`;
+    return `<${i.name} ${i.cost} petals>`;
   }
 
-  // Build "<label>: item | item | item" for one category
+  // Build "<label>: <item> <item> <item>" for one category
   function renderCategory(catId) {
     const cat = CATEGORIES.find(c => c.id === catId);
     const items = Object.values(SHOP_CATALOG).filter(i => i.category === catId);
-    return `${cat.label}: ${items.map(formatItem).join(' | ')}`;
+    return `${cat.label}: ${items.map(formatItem).join(' ')}`;
   }
 
   // Two messages — first covers seeds + garden actions, second covers tools + boosts.
