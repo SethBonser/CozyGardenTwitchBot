@@ -69,12 +69,12 @@ All config lives in `.env`:
 | `HARVEST_REWARD_ID` | ✅¹ | Reward UUID for the harvest-a-plant redemption |
 | `EXPAND_PLOT_REWARD_ID` | ✅¹ | Reward UUID for expanding the garden by one slot |
 | `STARTER_PETALS` | optional² | Petals granted on `!startgarden` (default `100`) |
-| `SEED_COST` | optional² | `!buy seed` price — random distribution 60/30/10 (default `30`) |
-| `UNCOMMON_SEED_COST` | optional² | `!buy uncommon seed` price — 75% uncommon / 25% rare, never common (default `100`) |
-| `RARE_SEED_COST` | optional² | `!buy rare seed` price — guaranteed rare (default `200`) |
-| `WATER_COST` | optional² | `!water` price (default `5`) |
+| `SEED_COST` | optional² | `!buyseed` price — random distribution 60/30/10 (default `30`) |
+| `UNCOMMON_SEED_COST` | optional² | `!buyuncommon` price — 75% uncommon / 25% rare, never common (default `100`) |
+| `RARE_SEED_COST` | optional² | `!buyrare` price — guaranteed rare (default `200`) |
+| `WATER_COST` | optional² | `!water` / `!buywater` price (default `5`) |
 | `EXPAND_COST_BASE` | optional² | Base for the quadratic expand cost — actual cost = base × currentSize² (default `100`, so 3→4 = 900, 4→5 = 1600, 9→10 = 8100) |
-| `FERTILIZE_COST` | optional³ | `!buy fertilize <slot>` price (default `300`) — applies to an empty slot and halves the water requirement at every stage for the next plant there. Always petal-priced regardless of mode. |
+| `FERTILIZE_COST` | optional³ | `!buyfertilize <slot>` price (default `300`) — applies to an empty slot and halves the water requirement at every stage for the next plant there. Always petal-priced regardless of mode. |
 | `MAX_GARDEN_SLOTS` | optional | Hard cap on garden size (default `10`) |
 | `OVERLAY_PORT` | optional | Port for the OBS overlay server (default `8080`) |
 | `ACTIVE_VIEWER_WINDOW_MIN` | optional | How recently someone must have chatted to share in a harvest payout, in minutes (default `30`) |
@@ -95,7 +95,7 @@ Set `USE_CHANNEL_REWARDS` in `.env` to switch the entire bot's flow with one var
 | Mode | When to use | How players get seeds | How they water/harvest/expand |
 |---|---|---|---|
 | **Channel Rewards** (`true`, default) | You're a Twitch Affiliate/Partner and want viewers to spend channel points | Redeem the **Get a Seed** / **Rare Seed** rewards | Redeem **Water Plant** / **Harvest Plant** / **Expand Garden** rewards |
-| **Petals-only** (`false`) | You're not an Affiliate yet, or you'd rather use a self-contained currency | New viewers run `!startgarden` to claim `STARTER_PETALS` 🌸, then `!buy seed` (`SEED_COST`🌸) | Chat commands `!water`, `!harvest`, `!expand` (each with their own petal cost; `!harvest` is free since it's the payout, `!expand` cost scales quadratically with garden size) |
+| **Petals-only** (`false`) | You're not an Affiliate yet, or you'd rather use a self-contained currency | New viewers run `!startgarden` to claim `STARTER_PETALS` 🌸, then `!buyseed` (`SEED_COST`🌸) | Chat commands `!water`, `!harvest`, `!expand` (each with their own petal cost; `!harvest` is free since it's the payout, `!expand` cost scales quadratically with garden size) |
 
 Both modes share the same `!plant`, `!seed`, `!discard`, `!garden`, `!petals`, `!gardeners`, `!shop`, and `!buy` commands. Switching modes is non-destructive — you can flip it any time, and existing player petals/held seeds carry over.
 
@@ -199,7 +199,7 @@ MAX_GARDEN_SLOTS=12
 | Step | Channel-Rewards mode | Petals-only mode |
 |---|---|---|
 | 1. **Earn currency** | Spend Twitch channel points | Run `!startgarden` once to claim `STARTER_PETALS`🌸; harvest plants to earn more |
-| 2. **Get a seed** | Redeem *Get a Seed* (or *Rare Seed*) | `!buy seed` (or `!buy rare seed`) — costs petals |
+| 2. **Get a seed** | Redeem *Get a Seed* (or *Rare Seed*) | `!buyseed` (or `!buyrare`) — costs petals |
 | 3. **Plant it** | `!plant` (auto-picks empty slot) or `!plant <slot>` | same |
 | 4. **Water it** | Redeem *Water Plant*, optionally with a slot number | `!water [slot]` — costs petals |
 | 5. **Watch it grow** | Seed 🌱 → Sprout 🌿 → Budding 🌸 → Blooming 🌺 | same |
@@ -230,7 +230,7 @@ Each plant has its own watering profile — rare plants take more waters per sta
 | `!petals` | Show your petal balance |
 | `!gardeners` | Top 3 gardeners by total waters given |
 | `!shop` | List shop items and prices |
-| `!buy <item> [slot]` | Purchase a shop item (slot required for Growth Tonic) |
+| `!buy <item> [slot]` | Purchase a shop item by name — or use a shorthand: `!buyseed` `!buyrare` `!buyuncommon` `!buywater` `!buyharvest` `!buyexpand` `!buyfertilize <slot>` `!buyrain` `!buytonic <slot>` `!buycompost` |
 | `!gardenhelp` | Quick reference for all commands and rewards (auto-adapts to current mode) |
 
 **Petals-only mode adds these chat commands** (when `USE_CHANNEL_REWARDS=false`):
@@ -242,9 +242,9 @@ Each plant has its own watering profile — rare plants take more waters per sta
 | `!harvest [slot]` | free | Harvest a bloomed plant (auto-picks first bloomed if no number given) |
 | `!expand` | quadratic 🌸 | Expand the garden by one slot — cost scales as `EXPAND_COST_BASE × currentSize²` |
 
-> 🌱 **Seeds are bought through the shop** — use `!buy seed` (`SEED_COST` 🌸) or `!buy rare seed` (`RARE_SEED_COST` 🌸). There are no standalone seed commands.
+> 🌱 **Seeds are bought through the shop** — use `!buyseed` (`SEED_COST` 🌸), `!buyuncommon` (`UNCOMMON_SEED_COST` 🌸), or `!buyrare` (`RARE_SEED_COST` 🌸). There are no standalone seed commands.
 
-> 🔒 **In channel-rewards mode**, `!water`, `!harvest`, `!expand`, and `!buy seed` / `!buy rare seed` just print a friendly redirect to use the matching channel point reward instead.
+> 🔒 **In channel-rewards mode**, `!water`, `!harvest`, `!expand`, and `!buyseed` / `!buyrare` just print a friendly redirect to use the matching channel point reward instead.
 >
 > 🌱 **In petals-only mode, every command is gated behind `!startgarden`** — viewers who haven't started yet get a friendly nudge to type `!startgarden` instead. The exceptions are `!startgarden` itself, `!gardenhelp`, `!garden`, `!gardeners`, and `!shop` (so newcomers can browse before deciding to start). Channel-rewards mode has no such gate since there's no `!startgarden` flow.
 
@@ -252,7 +252,7 @@ Each plant has its own watering profile — rare plants take more waters per sta
 
 ## 🎁 Channel Point Rewards
 
-> Only relevant when `USE_CHANNEL_REWARDS=true`. In petals-only mode, the same actions are run via `!water [slot]`, `!harvest [slot]`, `!expand`, or via `!buy <name>` in the shop (seeds are shop-only).
+> Only relevant when `USE_CHANNEL_REWARDS=true`. In petals-only mode, the same actions are run via `!water [slot]`, `!harvest [slot]`, `!expand`, or via shorthand buy commands like `!buyseed`, `!buyrare` (seeds are shop-only).
 
 | Reward | Behavior |
 |---|---|
@@ -274,9 +274,9 @@ Seed purchases. In channel-rewards mode, Get a Seed and Rare Seed redirect to th
 
 | Item | In Channel-Rewards mode | In Petals mode |
 |---|---|---|
-| 🎁 Get a Seed | `!buy seed` → "use the *Get a Seed* channel reward instead" | `!buy seed` charges `SEED_COST` 🌸 — random rarity (60/30/10) |
-| 🍀 Uncommon Seed | `!buy uncommon seed` charges `UNCOMMON_SEED_COST` 🌸 (petals-only — no channel reward equivalent) | Same — `!buy uncommon seed` charges `UNCOMMON_SEED_COST` 🌸. **75% uncommon / 25% rare** — never common |
-| 🌟 Rare Seed | redirect | `!buy rare seed` charges `RARE_SEED_COST` 🌸 — guaranteed rare |
+| 🎁 Get a Seed | `!buyseed` → "use the *Get a Seed* channel reward instead" | `!buyseed` charges `SEED_COST` 🌸 — random rarity (60/30/10) |
+| 🍀 Uncommon Seed | `!buyuncommon` charges `UNCOMMON_SEED_COST` 🌸 (petals-only — no channel reward equivalent) | Same — `!buyuncommon` charges `UNCOMMON_SEED_COST` 🌸. **75% uncommon / 25% rare** — never common |
+| 🌟 Rare Seed | redirect | `!buyrare` charges `RARE_SEED_COST` 🌸 — guaranteed rare |
 
 ### 🌿 Garden Actions
 
@@ -284,12 +284,12 @@ These are the same actions available via channel rewards / standalone commands. 
 
 | Item | In Channel-Rewards mode | In Petals mode |
 |---|---|---|
-| 💧 Water Plant | redirect | `!buy water [slot]` charges `WATER_COST` 🌸 |
-| 🌺 Harvest | redirect | `!buy harvest [slot]` is free (it's the payout) |
-| 🌿 Expand Garden | redirect | `!buy expand` charges the current quadratic cost (`EXPAND_COST_BASE × currentSize²` 🌸) |
-| 🌱 Fertilize | `!buy fertilize <slot>` charges `FERTILIZE_COST` 🌸 (petals-only feature, no channel reward) | Same — `!buy fertilize <slot>` charges `FERTILIZE_COST` 🌸. Slot must be empty; the **next** plant there grows with HALF the waters needed at every stage. |
+| 💧 Water Plant | redirect | `!buywater [slot]` charges `WATER_COST` 🌸 (or `!water [slot]` directly) |
+| 🌺 Harvest | redirect | `!buyharvest [slot]` is free (it's the payout) (or `!harvest [slot]` directly) |
+| 🌿 Expand Garden | redirect | `!buyexpand` charges the current quadratic cost (`EXPAND_COST_BASE × currentSize²` 🌸) |
+| 🌱 Fertilize | `!buyfertilize <slot>` charges `FERTILIZE_COST` 🌸 (petals-only feature, no channel reward) | Same — `!buyfertilize <slot>` charges `FERTILIZE_COST` 🌸. Slot must be empty; the **next** plant there grows with HALF the waters needed at every stage. |
 
-Aliases that fuzzy-match work too — e.g. `!buy seed`, `!buy rareseed`, `!buy water 3`, `!buy harvestplant`, `!buy expand`.
+The full-name form `!buy <name> [slot]` still works too — e.g. `!buy seed`, `!buy water 3`, `!buy growth tonic 2`.
 
 ### 🪣 Watering Tools (stream-wide upgrades, one-time purchases)
 
@@ -304,7 +304,7 @@ Aliases that fuzzy-match work too — e.g. `!buy seed`, `!buy rareseed`, `!buy w
 | Item | Cost | Effect |
 |---|---|---|
 | 🌧️ Rain Cloud | 200 🌸 | Instantly waters every occupied slot once |
-| 🧪 Growth Tonic | 150 🌸 | Your next water on a chosen slot counts as 3 waters. Use `!buy growth tonic <slot>` to apply it |
+| 🧪 Growth Tonic | 150 🌸 | Your next water on a chosen slot counts as 3 waters. Use `!buytonic <slot>` to apply it |
 
 ---
 
@@ -435,7 +435,7 @@ Channel reward redemption ─┐
                            │
 !water / !harvest / !etc.  ├──► performGetSeed / performWater / performHarvest / performExpand
                            │
-!buy seed / !buy water     ─┘
+!buyseed / !buywater       ─┘
 ```
 
 Adding a new entry point (Bits, sub-only, command alias, etc.) means writing a new dispatcher and reusing the same perform function. Changing how watering works means editing one place. The `shopContext` object (in `index.js`) is the small bundle of mode flag + costs + perform functions + `runPetalCostAction` helper that gets injected into `cmdShop` and `cmdBuy`.
