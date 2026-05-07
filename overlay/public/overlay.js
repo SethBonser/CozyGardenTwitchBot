@@ -524,6 +524,29 @@ function drawGardenBox(ctx, x, y, w, h) {
   const dirtH       = dirtBottom - dirtTop;
   const dirtW       = innerRight - innerLeft;
 
+  // Pink wood palette
+  const wood        = '#d97fa8';  // main pink plank face
+  const woodLight   = '#f0a8c8';  // highlight (top/left edges — lighter pink)
+  const woodShadow  = '#9e4d72';  // shadow (bottom/right edges — deep pink)
+  const woodDepth   = '#b3607f';  // depth faces (bottom + right — medium-dark pink)
+
+  // 3-D depth: bottom face drawn first (behind planks) so planks sit on top.
+  // This strip sits just below the box bottom (y + h) within the INFO_GAP
+  // space, giving the raised bed a visible front wall thickness.
+  const depthH = 6;  // px — front wall height
+  ctx.fillStyle = woodDepth;
+  ctx.fillRect(x, y + h, w, depthH);
+  ctx.fillStyle = woodShadow;
+  ctx.fillRect(x, y + h + depthH - 1, w, 1);
+
+  // 3-D depth: right side face spans full box height + depth strip.
+  // PADDING_X (16px) of canvas space sits to the right of the box so this fits.
+  const depthW = 6;  // px — right side wall width
+  ctx.fillStyle = woodDepth;
+  ctx.fillRect(x + w, boxTop, depthW, h - boxTop + y + depthH);
+  ctx.fillStyle = woodShadow;
+  ctx.fillRect(x + w + depthW - 1, boxTop, 1, h - boxTop + y + depthH);
+
   // Dirt fill inside the box
   ctx.fillStyle = '#5a3d24';
   ctx.fillRect(innerLeft, dirtTop, dirtW, dirtH);
@@ -536,11 +559,6 @@ function drawGardenBox(ctx, x, y, w, h) {
     const sy = dirtTop + ((i * 5) % dirtH);
     ctx.fillRect(sx, sy, 2, 2);
   }
-
-  // Wood palette
-  const wood       = '#8b5a2b';
-  const woodLight  = '#a87547';
-  const woodShadow = '#5a3618';
 
   // Top plank — full width, with highlight + shadow lines to suggest a bevel
   ctx.fillStyle = wood;       ctx.fillRect(x, boxTop, w, PLANK_THICK);
