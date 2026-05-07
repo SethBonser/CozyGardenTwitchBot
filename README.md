@@ -231,7 +231,7 @@ Each plant has its own watering profile — rare plants take more waters per sta
 | `!gardeners` | Top 3 gardeners by total waters given |
 | `!shop` | List shop items and prices |
 | `!buy <item> [slot]` | Purchase a shop item by name — or use a shorthand: `!buyseed` `!buyrare` `!buyuncommon` `!buywater` `!buyharvest` `!buyexpand` `!buyfertilize <slot>` `!buyrain` `!buytonic <slot>` `!buycompost` |
-| `!gardenhelp` | Quick reference for all commands and rewards (auto-adapts to current mode) |
+| `!ghelp` | Quick reference for all commands and rewards (auto-adapts to current mode) |
 
 **Petals-only mode adds these chat commands** (when `USE_CHANNEL_REWARDS=false`):
 
@@ -246,7 +246,7 @@ Each plant has its own watering profile — rare plants take more waters per sta
 
 > 🔒 **In channel-rewards mode**, `!water`, `!harvest`, `!expand`, and `!buyseed` / `!buyrare` just print a friendly redirect to use the matching channel point reward instead.
 >
-> 🌱 **In petals-only mode, every command is gated behind `!startgarden`** — viewers who haven't started yet get a friendly nudge to type `!startgarden` instead. The exceptions are `!startgarden` itself, `!gardenhelp`, `!garden`, `!gardeners`, and `!shop` (so newcomers can browse before deciding to start). Channel-rewards mode has no such gate since there's no `!startgarden` flow.
+> 🌱 **In petals-only mode, every command is gated behind `!startgarden`** — viewers who haven't started yet get a friendly nudge to type `!startgarden` instead. The exceptions are `!startgarden` itself, `!ghelp`, `!garden`, `!gardeners`, and `!shop` (so newcomers can browse before deciding to start). Channel-rewards mode has no such gate since there's no `!startgarden` flow.
 
 ---
 
