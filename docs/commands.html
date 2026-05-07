@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Commands — CozyGardenBot</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="index.html" class="nav-brand">🌸 CozyGardenBot</a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="setup.html">Setup</a></li>
+      <li><a href="commands.html" class="active">Commands</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="page">
+
+  <div class="section-header" style="margin-top:0">
+    <span class="section-icon">📖</span>
+    <h2>Commands Reference</h2>
+  </div>
+  <p style="color:var(--text-muted);margin-bottom:0.5rem">
+    Arguments in <code>[brackets]</code> are optional. Arguments in <code>&lt;angle brackets&gt;</code> are required.
+    Slot numbers refer to garden slots (e.g. <code>1</code>, <code>2</code>, <code>3</code>…).
+  </p>
+
+  <div class="callout callout-green" style="margin-bottom:2rem">
+    <span class="callout-icon">🌿</span>
+    <div>In <strong>Channel Rewards mode</strong> (default), actions like getting seeds, watering, and harvesting are done via Twitch channel point rewards — not chat commands. Viewers still use chat commands for planting, viewing the garden, and the shop.</div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════
+       VIEWER COMMANDS
+  ═════════════════════════════════════════════════════════════ -->
+  <div class="section-header">
+    <span class="section-icon">🌸</span>
+    <h2>Viewer Commands</h2>
+  </div>
+  <p style="color:var(--text-muted);margin-bottom:1.5rem">Commands any viewer can type in chat.</p>
+
+  <!-- Garden -->
+  <div class="subsection">
+    <h3>🌿 Garden</h3>
+    <div class="cmd-grid">
+
+      <div class="cmd-row">
+        <code>!garden [slot]</code>
+        <div class="cmd-desc">
+          Shows the whole garden and all slot progress. Add a slot number to see detailed info for that slot — plant name, rarity, stage, and water progress.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>!seed</code>
+        <div class="cmd-desc">
+          Shows the seed you're currently holding. Seeds are gained from channel point rewards (or <code>!buyseed</code> in petals mode).
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>!plant [slot]</code>
+        <div class="cmd-desc">
+          Plants your held seed into the garden. Picks the first empty slot automatically, or specify a slot number to plant there.
+          <br><strong>Example:</strong> <code>!plant 3</code>
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>!discard</code>
+        <div class="cmd-desc">
+          Releases your held seed without planting it. You'll need to get a new one to play again.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>!water [slot]</code>
+        <div class="cmd-desc">
+          Waters a plant to help it grow. Auto-picks the slot with the lowest water progress if no slot is given.
+          In <strong>Channel Rewards mode</strong>, watering is done by redeeming the <em>Water Plant</em> reward instead.
+          <br><strong>Example:</strong> <code>!water 2</code>
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>!harvest [slot]</code>
+        <div class="cmd-desc">
+          Harvests a fully bloomed plant and collects 🌸 petals. Part of the payout is shared with everyone active in chat.
+          In <strong>Channel Rewards mode</strong>, use the <em>Harvest Plant</em> reward instead.
+          <br><strong>Example:</strong> <code>!harvest 1</code>
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>!petals</code>
+        <div class="cmd-desc">
+          Shows your current 🌸 petal balance. Petals are earned by harvesting and shared with active viewers.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>!gardeners</code>
+        <div class="cmd-desc">
+          Shows the top 3 viewers by waters given — the community's most dedicated gardeners 🥇🥈🥉
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>!gardenhelp</code>
+        <div class="cmd-desc">
+          Prints a quick command summary in chat — handy for new viewers who want a refresher.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Shop -->
+  <div class="subsection">
+    <h3>🛒 Shop</h3>
+    <div class="cmd-grid">
+
+      <div class="cmd-row">
+        <code>!shop</code>
+        <div class="cmd-desc">
+          Shows all available items and their petal prices in chat, split into two messages by category.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>!buy &lt;item name&gt; [slot]</code>
+        <div class="cmd-desc">
+          Generic buy command — accepts any item name (fuzzy matched). You can also use the shorthand commands below instead.
+          <br><strong>Example:</strong> <code>!buy growth tonic 2</code>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Seeds -->
+  <div class="subsection">
+    <h3>🌱 Buy Seeds</h3>
+    <div class="cmd-grid">
+
+      <div class="cmd-row">
+        <code>!buyseed</code>
+        <div class="cmd-desc">
+          <strong>Random seed</strong> — 60% common, 30% uncommon, 10% rare. <span class="badge badge-petals">costs petals</span>
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>!buyuncommon</code>
+        <div class="cmd-desc">
+          <strong>Uncommon seed</strong> — 75% uncommon, 25% rare. Never common. <span class="badge badge-petals">costs petals</span>
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>!buyrare</code>
+        <div class="cmd-desc">
+          <strong>Rare seed</strong> — guaranteed rare plant. <span class="badge badge-petals">costs petals</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Garden Actions -->
+  <div class="subsection">
+    <h3>🌿 Buy Garden Actions</h3>
+    <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:0.75rem">In Channel Rewards mode these are channel point rewards instead. In petals mode they cost petals.</p>
+    <div class="cmd-grid">
+
+      <div class="cmd-row">
+        <code>!buywater [slot]</code>
+        <div class="cmd-desc">
+          Waters a plant using petals. Auto-picks lowest-progress slot, or target a specific slot.
+          <br><strong>Example:</strong> <code>!buywater 3</code>
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>!buyharvest [slot]</code>
+        <div class="cmd-desc">
+          Harvests a bloomed plant using petals (harvesting is free — it pays out!). Auto-picks or specify a slot.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>!buyexpand</code>
+        <div class="cmd-desc">
+          Adds one new slot to the shared garden. Cost increases quadratically with each expansion.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>!buyfertilize &lt;slot&gt;</code>
+        <div class="cmd-desc">
+          Applies fertilizer to an <em>empty</em> slot — the next plant placed there needs half as many waters at every stage. <span class="badge badge-petals">petals only</span>
+          <br><strong>Example:</strong> <code>!buyfertilize 2</code>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Boosts -->
+  <div class="subsection">
+    <h3>🧪 Buy Boosts</h3>
+    <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:0.75rem">Single-use consumables — spend petals for an immediate effect.</p>
+    <div class="cmd-grid">
+
+      <div class="cmd-row">
+        <code>!buyrain</code>
+        <div class="cmd-desc">
+          <strong>🌧️ Rain Cloud</strong> — instantly waters every occupied garden slot once. Great when the garden is full!
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>!buytonic &lt;slot&gt;</code>
+        <div class="cmd-desc">
+          <strong>🧪 Growth Tonic</strong> — your next <code>!water</code> on the chosen slot counts as 3 waters instead of 1.
+          <br><strong>Example:</strong> <code>!buytonic 2</code>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Upgrades -->
+  <div class="subsection">
+    <h3>🪣 Buy Upgrades</h3>
+    <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:0.75rem">One-time stream-wide purchases — once bought, everyone in chat benefits.</p>
+    <div class="cmd-grid">
+
+      <div class="cmd-row">
+        <code>!buycompost</code>
+        <div class="cmd-desc">
+          <strong>🪣🌿 Compost Bin</strong> — all plants need 20% fewer waters per stage. Permanent stream upgrade. <span class="badge badge-upgrade">600🌸</span>
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>!buycopper</code>
+        <div class="cmd-desc">
+          <strong>🪣 Copper Can</strong> — vestigial upgrade (watering cooldown reduction no longer applies). <span class="badge badge-upgrade">400🌸</span>
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>!buysilver</code>
+        <div class="cmd-desc">
+          <strong>🪣✨ Silver Can</strong> — requires Copper Can first. Vestigial upgrade. <span class="badge badge-upgrade">800🌸</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Petals mode only -->
+  <div class="subsection">
+    <h3>🌸 Petals Mode Only</h3>
+    <div class="cmd-grid">
+
+      <div class="cmd-row">
+        <code>!startgarden</code>
+        <div class="cmd-desc">
+          Claims your one-time starter petal grant so you can begin spending petals. Only available in petals-only mode — in Channel Rewards mode everyone starts automatically.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ════════════════════════════════════════════════════════════
+       STREAMER SETUP
+  ═════════════════════════════════════════════════════════════ -->
+  <div class="section-header">
+    <span class="section-icon">🎮</span>
+    <h2>Streamer Setup</h2>
+  </div>
+  <p style="color:var(--text-muted);margin-bottom:1.5rem">
+    These aren't chat commands — they're actions you configure as part of the bot setup. See the <a href="setup.html">Setup guide</a> for full details.
+  </p>
+
+  <!-- Channel Rewards -->
+  <div class="subsection">
+    <h3>🏆 Channel Point Rewards</h3>
+    <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:0.75rem">
+      Create these in your Twitch Creator Dashboard → Channel Points → Manage Rewards. The bot links them via IDs in your <code>.env</code> file.
+    </p>
+    <div class="cmd-grid">
+
+      <div class="cmd-row">
+        <code>Get a Seed</code>
+        <div class="cmd-desc">
+          Gives the redeeming viewer a random seed (60% common / 30% uncommon / 10% rare). They then use <code>!plant</code> to place it.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>Rare Seed</code>
+        <div class="cmd-desc">
+          Gives a guaranteed rare plant seed. Set the channel point cost higher than Get a Seed.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>Water Plant</code>
+        <div class="cmd-desc">
+          Waters a plant in the garden. Viewers can include a slot number in the reward message to target a specific slot.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>Harvest Plant</code>
+        <div class="cmd-desc">
+          Harvests a bloomed plant and awards petals. Payout is shared with everyone active in chat.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>Expand Garden</code>
+        <div class="cmd-desc">
+          Adds one slot to the shared garden (up to the <code>MAX_GARDEN_SLOTS</code> limit set in <code>.env</code>).
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- .env config -->
+  <div class="subsection">
+    <h3>⚙️ Key Configuration Options</h3>
+    <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:0.75rem">
+      Configured in your <code>.env</code> file. See the <a href="setup.html">Setup guide</a> for the full variable reference.
+    </p>
+    <div class="cmd-grid">
+
+      <div class="cmd-row">
+        <code>USE_CHANNEL_REWARDS</code>
+        <div class="cmd-desc">
+          <code>true</code> (default) — actions are channel point rewards. <code>false</code> — petals-only mode, all actions cost petals.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>MAX_GARDEN_SLOTS</code>
+        <div class="cmd-desc">
+          The maximum number of slots the garden can expand to (default: <code>10</code>). The community starts at 3 and grows by purchasing expansions.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>ACTIVE_VIEWER_WINDOW_MIN</code>
+        <div class="cmd-desc">
+          How recently (in minutes) a viewer must have chatted to receive a share of the harvest payout. Default: <code>30</code>.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>IGNORED_USERS</code>
+        <div class="cmd-desc">
+          Comma-separated list of bot usernames to exclude from tracking and payouts (e.g. <code>nightbot,streamelements</code>).
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>OVERLAY_PORT</code>
+        <div class="cmd-desc">
+          Port for the OBS overlay web server. Default: <code>8080</code>. Add <code>http://localhost:8080/</code> as a Browser Source in OBS.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Made with 🌸 for cozy streams &nbsp;·&nbsp; <a href="index.html">Home</a> &nbsp;·&nbsp; <a href="setup.html">Setup</a>
+</footer>
+
+</body>
+</html>

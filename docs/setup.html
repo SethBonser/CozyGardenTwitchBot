@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Setup — CozyGardenBot</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="index.html" class="nav-brand">🌸 CozyGardenBot</a>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="setup.html" class="active">Setup</a></li>
+      <li><a href="commands.html">Commands</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="page">
+
+  <div class="section-header" style="margin-top:0">
+    <span class="section-icon">⚙️</span>
+    <h2>Setup Guide</h2>
+  </div>
+  <p style="color:var(--text-muted);margin-bottom:2rem">Everything you need to get CozyGardenBot running in your Twitch channel.</p>
+
+  <!-- ── Prerequisites ── -->
+  <div class="section-header">
+    <span class="section-icon">📋</span>
+    <h2>Prerequisites</h2>
+  </div>
+
+  <ul>
+    <li><strong>Node.js 18+</strong> — <a href="https://nodejs.org" target="_blank">nodejs.org</a></li>
+    <li><strong>A Twitch account for the bot</strong> — create a separate account (e.g. <code>MyChannelBot</code>), not your streamer account</li>
+    <li><strong>A Twitch OAuth token</strong> for the bot account with <code>chat:read</code> and <code>chat:edit</code> scopes</li>
+  </ul>
+
+  <div class="callout callout-green" style="margin-top:1rem">
+    <span class="callout-icon">💡</span>
+    <div>Get a token easily at <a href="https://twitchtokengenerator.com" target="_blank">twitchtokengenerator.com</a> — log in as the <em>bot</em> account, select Chat Token, and copy the value. It starts with <code>oauth:</code>.</div>
+  </div>
+
+  <!-- ── Installation ── -->
+  <div class="section-header">
+    <span class="section-icon">📦</span>
+    <h2>Installation</h2>
+  </div>
+
+  <ol class="steps">
+    <li>
+      <div>
+        <strong>Clone or download the project</strong>
+        <pre><code>git clone https://github.com/your-username/cozy-garden-bot.git
+cd cozy-garden-bot</code></pre>
+      </div>
+    </li>
+    <li>
+      <div>
+        <strong>Install dependencies</strong>
+        <pre><code>npm install</code></pre>
+      </div>
+    </li>
+    <li>
+      <div>
+        <strong>Create your <code>.env</code> file</strong>
+        Copy the example and fill in your values:
+        <pre><code>cp .env.example .env</code></pre>
+      </div>
+    </li>
+    <li>
+      <div>
+        <strong>Start the bot</strong>
+        <pre><code>npm start</code></pre>
+        You should see <em>CozyGardenBot is awake!</em> in your chat.
+      </div>
+    </li>
+  </ol>
+
+  <!-- ── Choose a mode ── -->
+  <div class="section-header">
+    <span class="section-icon">⚡</span>
+    <h2>Choose a Mode</h2>
+  </div>
+
+  <p>CozyGardenBot has two ways to let viewers participate. Pick the one that fits your stream:</p>
+
+  <div class="mode-compare">
+    <div class="mode-box active">
+      <h4>🏆 Channel Rewards Mode <span class="badge badge-rewards">Recommended</span></h4>
+      <ul>
+        <li>Actions (get seed, water, harvest, expand) are Twitch channel point rewards — <strong>free for viewers</strong></li>
+        <li>Viewers still earn and spend 🌸 petals on boosts and upgrades via the shop</li>
+        <li>Set <code>USE_CHANNEL_REWARDS=true</code> in <code>.env</code></li>
+      </ul>
+    </div>
+    <div class="mode-box">
+      <h4>🌸 Petals-Only Mode</h4>
+      <ul>
+        <li>All actions cost petals — no channel points needed</li>
+        <li>Viewers start with <code>!startgarden</code> to claim starter petals</li>
+        <li>Set <code>USE_CHANNEL_REWARDS=false</code> in <code>.env</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ── .env reference ── -->
+  <div class="section-header">
+    <span class="section-icon">📝</span>
+    <h2>Environment Variables</h2>
+  </div>
+
+  <div class="subsection">
+    <h3>🔑 Required</h3>
+    <table class="env-table">
+      <thead>
+        <tr><th>Variable</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>BOT_USERNAME</code></td><td>The Twitch username of your bot account</td></tr>
+        <tr><td><code>OAUTH_TOKEN</code></td><td>OAuth token for the bot account — must start with <code>oauth:</code></td></tr>
+        <tr><td><code>CHANNEL_NAME</code></td><td>Your stream channel name, without the <code>#</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="subsection">
+    <h3>⚡ Mode &amp; Channel Rewards</h3>
+    <table class="env-table">
+      <thead>
+        <tr><th>Variable</th><th>Default</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>USE_CHANNEL_REWARDS</code></td><td><code>true</code></td><td>Set to <code>false</code> to use petals-only mode</td></tr>
+        <tr><td><code>GET_SEED_REWARD_ID</code></td><td>—</td><td>Twitch reward ID for "Get a Seed" (auto-printed on first redemption)</td></tr>
+        <tr><td><code>RARE_SEED_REWARD_ID</code></td><td>—</td><td>Twitch reward ID for "Rare Seed"</td></tr>
+        <tr><td><code>WATER_REWARD_ID</code></td><td>—</td><td>Twitch reward ID for "Water Plant"</td></tr>
+        <tr><td><code>HARVEST_REWARD_ID</code></td><td>—</td><td>Twitch reward ID for "Harvest Plant"</td></tr>
+        <tr><td><code>EXPAND_PLOT_REWARD_ID</code></td><td>—</td><td>Twitch reward ID for "Expand Garden"</td></tr>
+      </tbody>
+    </table>
+    <div class="callout callout-gold">
+      <span class="callout-icon">✨</span>
+      <div>You don't need to hunt for reward IDs manually — just leave them blank, create the rewards on Twitch, and redeem each one once. The bot prints the ID to the console automatically so you can paste it into <code>.env</code>.</div>
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3>🌸 Petals Pricing (petals-only mode)</h3>
+    <table class="env-table">
+      <thead>
+        <tr><th>Variable</th><th>Default</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>STARTER_PETALS</code></td><td><code>100</code></td><td>Petals granted on <code>!startgarden</code></td></tr>
+        <tr><td><code>SEED_COST</code></td><td><code>30</code></td><td>Cost of <code>!buyseed</code> (random rarity)</td></tr>
+        <tr><td><code>UNCOMMON_SEED_COST</code></td><td><code>100</code></td><td>Cost of <code>!buyuncommon</code></td></tr>
+        <tr><td><code>RARE_SEED_COST</code></td><td><code>200</code></td><td>Cost of <code>!buyrare</code> (guaranteed rare)</td></tr>
+        <tr><td><code>WATER_COST</code></td><td><code>5</code></td><td>Cost of <code>!buywater</code></td></tr>
+        <tr><td><code>FERTILIZE_COST</code></td><td><code>300</code></td><td>Cost of <code>!buyfertilize &lt;slot&gt;</code></td></tr>
+        <tr><td><code>EXPAND_COST_BASE</code></td><td><code>100</code></td><td>Base for expansion cost formula: <code>base × slots²</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="subsection">
+    <h3>🌿 Garden Settings</h3>
+    <table class="env-table">
+      <thead>
+        <tr><th>Variable</th><th>Default</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>MAX_GARDEN_SLOTS</code></td><td><code>10</code></td><td>Maximum number of garden slots the community can expand to</td></tr>
+        <tr><td><code>ACTIVE_VIEWER_WINDOW_MIN</code></td><td><code>30</code></td><td>Minutes a viewer must have chatted to share harvest payouts</td></tr>
+        <tr><td><code>IGNORED_USERS</code></td><td>—</td><td>Comma-separated list of bot usernames to exclude (e.g. <code>nightbot,streamelements</code>)</td></tr>
+        <tr><td><code>OVERLAY_PORT</code></td><td><code>8080</code></td><td>Port the OBS overlay server listens on</td></tr>
+        <tr><td><code>WATER_COOLDOWN_ENABLED</code></td><td><code>true</code></td><td>Set to <code>false</code> to disable watering cooldowns</td></tr>
+        <tr><td><code>WATER_COOLDOWN_MINUTES</code></td><td><code>10</code></td><td>Base cooldown between waters per viewer</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── OBS Overlay ── -->
+  <div class="section-header">
+    <span class="section-icon">🎨</span>
+    <h2>OBS Overlay</h2>
+  </div>
+
+  <p>The bot includes a real-time pixel-art garden overlay you can drop into OBS as a Browser Source.</p>
+
+  <ol class="steps">
+    <li>
+      <div>
+        <strong>Make sure the bot is running</strong>
+        The overlay server starts automatically with <code>npm start</code> on port <code>8080</code> (or your <code>OVERLAY_PORT</code>).
+      </div>
+    </li>
+    <li>
+      <div>
+        <strong>Add a Browser Source in OBS</strong>
+        In OBS → Sources → Add → <em>Browser</em>. Set the URL to:
+        <pre><code>http://localhost:8080/</code></pre>
+        Set width to match your garden size. The canvas auto-resizes horizontally as slots are added.
+      </div>
+    </li>
+    <li>
+      <div>
+        <strong>Check the preview</strong>
+        Open <code>http://localhost:8080/</code> in your browser to see the overlay with a checkered preview background. OBS renders it transparent automatically.
+      </div>
+    </li>
+  </ol>
+
+  <div class="callout callout-green">
+    <span class="callout-icon">🌿</span>
+    <div>The overlay auto-reconnects if the bot restarts, so you don't need to refresh the Browser Source mid-stream.</div>
+  </div>
+
+  <!-- ── Channel Rewards Setup ── -->
+  <div class="section-header">
+    <span class="section-icon">🏆</span>
+    <h2>Channel Rewards Setup</h2>
+  </div>
+
+  <p>If using Channel Rewards mode, create these rewards in your Twitch <strong>Creator Dashboard → Channel Points → Manage Rewards</strong>:</p>
+
+  <table class="env-table">
+    <thead>
+      <tr><th>Reward Name</th><th>Suggested Cost</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>Get a Seed</strong></td><td>100–500 pts</td><td>Gives a random seed (60% common / 30% uncommon / 10% rare)</td></tr>
+      <tr><td><strong>Rare Seed</strong></td><td>500–2000 pts</td><td>Guaranteed rare plant seed</td></tr>
+      <tr><td><strong>Water Plant</strong></td><td>50–200 pts</td><td>Waters a plant (auto-picks or viewer can specify a slot)</td></tr>
+      <tr><td><strong>Harvest Plant</strong></td><td>100–300 pts</td><td>Harvests a bloomed plant and awards petals</td></tr>
+      <tr><td><strong>Expand Garden</strong></td><td>1000–5000 pts</td><td>Adds one slot to the shared garden</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-pink">
+    <span class="callout-icon">📋</span>
+    <div>
+      After creating each reward, have someone redeem it once with the bot running. The reward's ID will be printed to the terminal — copy it into your <code>.env</code> and restart the bot.
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Made with 🌸 for cozy streams &nbsp;·&nbsp; <a href="index.html">Home</a> &nbsp;·&nbsp; <a href="commands.html">Commands</a>
+</footer>
+
+</body>
+</html>
