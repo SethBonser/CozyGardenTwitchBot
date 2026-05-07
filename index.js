@@ -62,6 +62,8 @@ const FERTILIZE_COST  = parseInt(process.env.FERTILIZE_COST  || '300', 10);
 // so each subsequent expansion is meaningfully more expensive than the last.
 // Default base 100 yields: 3→4 = 900, 4→5 = 1600, 5→6 = 2500, 9→10 = 8100.
 const EXPAND_COST_BASE = parseInt(process.env.EXPAND_COST_BASE || '100', 10);
+const RAIN_COST        = parseInt(process.env.RAIN_COST        || '200', 10);
+const TONIC_COST       = parseInt(process.env.TONIC_COST       || '150', 10);
 function getExpandCost() {
   const current = db.getGardenSlotCount();
   return EXPAND_COST_BASE * current * current;
@@ -530,6 +532,9 @@ function performHarvest(username, message) {
   // is flagged as having started.
   if (!isIgnored(username)) db.markStarterClaimed(username);
 
+  // Record the harvest in the log (tracks who ran !harvest and what they grew)
+  db.logHarvest(username, plant, petals, targetSlotNum);
+
   // Channel-wide reward: every recently-active chatter shares the petals.
   // In petals-only mode, only viewers who have started the game (claimed
   // starter petals or otherwise engaged) are eligible — lurkers without an
@@ -615,6 +620,59 @@ function performFertilize(username, message) {
   };
 }
 
+function performRainCloud(username) {
+  const slots = db.getAllSlots();
+  const occupied = slots.filter(s => s.plant_id);
+  if (!occupied.length) {
+    return { ok: false, messages: [`@${username} 🌧️ The garden is empty — save your Rain Cloud for when there are plants!`] };
+  }
+  let watered = 0;
+  for (const s of occupied) {
+    const info = getGrowthInfo(s);
+    if (info && !info.isBloom) {
+      db.waterSlot(s.slot, 1);
+      db.recordWater(username);
+      let updSlot = db.getSlot(s.slot);
+      let updInfo = getGrowthInfo(updSlot);
+      const needed = getEffectiveWatersNeeded(s.slot, updInfo.watersNeeded);
+      while (!updInfo.isBloom && updSlot.waters_done >= needed) {
+        db.advanceStage(s.slot);
+        updSlot = db.getSlot(s.slot);
+        updInfo = getGrowthInfo(updSlot);
+      }
+      watered++;
+    }
+  }
+  return {
+    ok: true,
+    messages: [`@${username} 🌧️ Rain Cloud soaks the whole garden — watered ${watered} plant${watered !== 1 ? 's' : ''}! 🌿`],
+  };
+}
+
+function performGrowthTonic(username, slotArg) {
+  const slotCount = db.getGardenSlotCount();
+  const slotNum = slotArg ? parseInt(String(slotArg), 10) : NaN;
+  if (!slotArg || isNaN(slotNum) || slotNum < 1 || slotNum > slotCount) {
+    return { ok: false, messages: [`@${username} 🧪 Specify a slot for your Growth Tonic! e.g. !buytonic 2 (slots 1-${slotCount})`] };
+  }
+  const slotRow = db.getSlot(slotNum);
+  if (!slotRow || !slotRow.plant_id) {
+    return { ok: false, messages: [`@${username} 🪨 Slot ${slotNum} is empty! Plant something first.`] };
+  }
+  const info = getGrowthInfo(slotRow);
+  if (info && info.isBloom) {
+    return { ok: false, messages: [`@${username} 🌺 Slot ${slotNum} is already blooming! Harvest it first.`] };
+  }
+  if (db.getActiveEffect(username, 'growth_tonic', slotNum)) {
+    return { ok: false, messages: [`@${username} 🧪 You already have a Growth Tonic on slot ${slotNum}! Use !water ${slotNum} to activate it.`] };
+  }
+  db.addEffect(username, 'growth_tonic', slotNum, 1);
+  return {
+    ok: true,
+    messages: [`@${username} 🧪 Growth Tonic applied to slot ${slotNum}! Your next !water ${slotNum} will count as 3 waters 💧💧💧`],
+  };
+}
+
 // ─── Chat command helper for petals mode ─────────────────────────────────────
 // Charges petals up front (if action succeeds), runs the action, posts messages.
 // On failure (validation or affordability) no petals are deducted.
@@ -651,6 +709,8 @@ function buildShopContext() {
       harvest:       0,                 // harvest is the payout, no cost
       expand:        getExpandCost(),   // dynamic — depends on current garden size
       fertilize:     FERTILIZE_COST,
+      rain_cloud:    RAIN_COST,
+      growth_tonic:  TONIC_COST,
     },
     performAction: {
       seed:          (username, msg) => performGetSeed(username),
@@ -660,9 +720,82 @@ function buildShopContext() {
       harvest:       (username, msg) => performHarvest(username, msg),
       expand:        (username, msg) => performExpand(username),
       fertilize:     (username, msg) => performFertilize(username, msg),
+      rain_cloud:    (username)      => performRainCloud(username),
+      growth_tonic:  (username, msg) => performGrowthTonic(username, msg),
     },
     runPetalCostAction,
   };
+}
+
+// ─── Dashboard action handler ─────────────────────────────────────────────────
+// Called by the HTTP API when a viewer clicks a buy button in the dashboard.
+// Mirrors the chat command logic but returns { ok, messages } as JSON instead
+// of posting directly. Still posts results to Twitch chat for channel visibility.
+
+function handleDashboardAction(username, actionId, slotArg) {
+  const lower = username.toLowerCase();
+
+  // Petals-only mode gate (same rule as chat commands)
+  if (!USE_CHANNEL_REWARDS && !db.hasClaimedStarter(lower)) {
+    return { ok: false, messages: [`You haven't started your garden yet! Type !startgarden in chat first.`] };
+  }
+
+  const ctx = buildShopContext();
+  const { SHOP_CATALOG } = require('./commands/shop');
+  const item = SHOP_CATALOG[actionId];
+  if (!item) return { ok: false, messages: [`Unknown item "${actionId}".`] };
+
+  // ── Action items (seed, water, harvest, expand, fertilize, rain_cloud, growth_tonic) ──
+  if (item.type === 'action' || item.type === 'consumable') {
+    // Channel reward items can't be bought with petals in rewards mode (except petalsOnly items)
+    if (ctx.useChannelRewards && item.type === 'action' && !item.petalsOnly) {
+      return { ok: false, messages: [`"${item.name}" is a channel point reward — redeem it from the Twitch rewards menu!`] };
+    }
+
+    const performFn = ctx.performAction[actionId];
+    if (!performFn) return { ok: false, messages: [`This item can't be purchased right now.`] };
+
+    const cost = ctx.costs[actionId] !== undefined ? ctx.costs[actionId] : (item.cost || 0);
+    if (cost > 0) {
+      const viewer = db.getViewer(lower);
+      if (viewer.petals < cost) {
+        return { ok: false, messages: [`Need ${cost}🌸 petals (you have ${viewer.petals}🌸).`] };
+      }
+    }
+
+    const result = performFn(lower, slotArg || '');
+    if (result.ok) {
+      if (cost > 0) {
+        db.deductPetals(lower, cost);
+        const bal = db.getViewer(lower).petals;
+        result.messages.push(`@${lower} 💸 -${cost}🌸 via dashboard (balance: ${bal}🌸)`);
+      }
+      for (const m of result.messages) client.say(channel, m).catch(() => {});
+    }
+    return { ok: result.ok, messages: result.messages };
+  }
+
+  // ── Upgrades ──────────────────────────────────────────────────────────────
+  if (item.type === 'upgrade') {
+    if (db.isUpgradePurchased(item.id)) {
+      return { ok: false, messages: [`${item.emoji} ${item.name} is already purchased — the whole garden benefits!`] };
+    }
+    if (item.id === 'silver_can' && !db.isUpgradePurchased('copper_can')) {
+      return { ok: false, messages: [`You need the Copper Can before upgrading to the Silver Can!`] };
+    }
+    const viewer = db.getViewer(lower);
+    if (viewer.petals < item.cost) {
+      return { ok: false, messages: [`Need ${item.cost}🌸 petals (you have ${viewer.petals}🌸).`] };
+    }
+    db.deductPetals(lower, item.cost);
+    db.purchaseUpgrade(item.id, lower);
+    const bal = db.getViewer(lower).petals;
+    const msg = `@${lower} ${item.emoji} Purchased ${item.name} via the dashboard! ${item.description}. Balance: ${bal}🌸 🎉`;
+    client.say(channel, msg).catch(() => {});
+    return { ok: true, messages: [msg] };
+  }
+
+  return { ok: false, messages: [`Something went wrong — unknown item type.`] };
 }
 
 function handleReward(chan, username, rewardId, message) {
@@ -678,7 +811,23 @@ function handleReward(chan, username, rewardId, message) {
 
 // ─── Connect ──────────────────────────────────────────────────────────────────
 
-overlayServer.start(OVERLAY_PORT);
+overlayServer.start(OVERLAY_PORT, {
+  getShopData: () => ({
+    useChannelRewards: USE_CHANNEL_REWARDS,
+    costs: {
+      seed:          SEED_COST,
+      uncommon_seed: UNCOMMON_SEED_COST,
+      rare_seed:     RARE_SEED_COST,
+      water:         WATER_COST,
+      harvest:       0,
+      expand:        getExpandCost(),
+      fertilize:     FERTILIZE_COST,
+      rain_cloud:    RAIN_COST,
+      growth_tonic:  TONIC_COST,
+    },
+  }),
+  handleAction: handleDashboardAction,
+});
 
 // Surface IRC-level connection lifecycle for easier debugging
 client.on('connecting', (addr, port) => console.log(`🔌 Connecting to ${addr}:${port}...`));
@@ -708,6 +857,29 @@ client.connect().then(() => {
     : `🌿 CozyGardenBot is awake! New here? Type !startgarden to claim ${STARTER_PETALS}🌸 starter petals. Spend them: !buyseed (${SEED_COST}🌸) → !plant → !water [slot] (${WATER_COST}🌸) → !harvest. Type !ghelp for the full list. 🌸`;
   client.say(channel, welcome)
     .catch(err => console.warn('   (Could not post welcome message:', err && err.message, ')'));
+
+  // Optional public dashboard tunnel — set DASHBOARD_TUNNEL=true in .env to enable.
+  // Gives viewers a public URL to open the dashboard in their own browser.
+  if (process.env.DASHBOARD_TUNNEL === 'true') {
+    try {
+      const localtunnel = require('localtunnel');
+      localtunnel({ port: OVERLAY_PORT }).then(tunnel => {
+        const dashUrl = `${tunnel.url}/dashboard`;
+        console.log(`🌐 Public dashboard: ${dashUrl}`);
+        client.say(channel, `🌸 Garden Dashboard is live! Open ${dashUrl} to see your petals, seed & shop. 🌿`)
+          .catch(() => {});
+        tunnel.on('close', () => console.log('🔌 Tunnel closed. Restart the bot to get a new URL.'));
+        tunnel.on('error', err => console.warn('⚠️  Tunnel error:', err.message));
+      }).catch(err => {
+        console.warn('⚠️  Could not start tunnel:', err.message);
+      });
+    } catch (e) {
+      console.warn('⚠️  localtunnel not installed. Run: npm install localtunnel');
+    }
+  } else {
+    console.log(`🖥  Local dashboard: http://localhost:${OVERLAY_PORT}/dashboard`);
+    console.log('   Set DASHBOARD_TUNNEL=true in .env to expose it publicly.');
+  }
 }).catch(err => {
   console.error('❌  Failed to connect to Twitch IRC.');
   console.error('    Reason:', err && err.message ? err.message : err);

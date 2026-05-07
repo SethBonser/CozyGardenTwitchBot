@@ -244,97 +244,16 @@ function cmdBuy(client, channel, userstate, args, ctx = {}) {
   // ── Consumables ───────────────────────────────────────────────────────────
 
   if (item.type === 'consumable') {
-    if (viewer.petals < item.cost) {
-      return client.say(channel,
-        `@${username} 💸 Not enough petals! ${item.name} costs ${item.cost}🌸 but you only have ${viewer.petals}🌸.`
-      );
-    }
-
-    // Rain Cloud: waters all occupied slots
-    if (item.id === 'rain_cloud') {
-      const slots = db.getAllSlots();
-      const occupied = slots.filter(s => s.plant_id);
-      if (!occupied.length) {
-        return client.say(channel,
-          `@${username} 🌧️ The garden is empty — save your Rain Cloud for when there are plants to water!`
-        );
-      }
-
-      db.deductPetals(username, item.cost);
-
-      let watered = 0;
-      for (const s of occupied) {
-        const { getGrowthInfo } = require('../helpers');
-        const info = getGrowthInfo(s);
-        if (info && !info.isBloom) {
-          db.waterSlot(s.slot, 1);
-          db.recordWater(username);
-          // Check for stage advancement
-          let updatedSlot = db.getSlot(s.slot);
-          let updInfo = getGrowthInfo(updatedSlot);
-          const { getEffectiveWatersNeeded } = require('../helpers');
-          const needed = getEffectiveWatersNeeded(s.slot, updInfo.watersNeeded);
-          while (!updInfo.isBloom && updatedSlot.waters_done >= needed) {
-            db.advanceStage(s.slot);
-            updatedSlot = db.getSlot(s.slot);
-            updInfo = getGrowthInfo(updatedSlot);
-          }
-          watered++;
-        }
-      }
-
-      const updatedViewer = db.getViewer(username);
-      client.say(channel,
-        `@${username} 🌧️ Rain Cloud soaks the whole garden — watered ${watered} plant${watered !== 1 ? 's' : ''}! You have ${updatedViewer.petals}🌸 left.`
-      );
-      return;
-    }
-
-    // Growth Tonic: 3x water on next !water for a slot
-    if (item.id === 'growth_tonic') {
-      const slotCount = db.getGardenSlotCount();
-
-      if (!slotNum || slotNum < 1 || slotNum > slotCount) {
-        return client.say(channel,
-          `@${username} 🧪 Specify a slot for your Growth Tonic! e.g. !buytonic 2 (slots 1-${slotCount})`
-        );
-      }
-
-      const slotRow = db.getSlot(slotNum);
-      if (!slotRow || !slotRow.plant_id) {
-        return client.say(channel,
-          `@${username} 🪨 Slot ${slotNum} is empty! Plant something first.`
-        );
-      }
-
-      const { getGrowthInfo } = require('../helpers');
-      const info = getGrowthInfo(slotRow);
-      if (info && info.isBloom) {
-        return client.say(channel,
-          `@${username} 🌺 Slot ${slotNum} is already blooming! Harvest it first.`
-        );
-      }
-
-      // Check if they already have a tonic on this slot
-      const existing = db.getActiveEffect(username, 'growth_tonic', slotNum);
-      if (existing) {
-        return client.say(channel,
-          `@${username} 🧪 You already have a Growth Tonic on slot ${slotNum}! Use !water ${slotNum} to activate it.`
-        );
-      }
-
-      db.deductPetals(username, item.cost);
-      db.addEffect(username, 'growth_tonic', slotNum, 1);
-
-      const updatedViewer = db.getViewer(username);
-      client.say(channel,
-        `@${username} 🧪 Growth Tonic applied to slot ${slotNum}! Your next !water ${slotNum} will count as 3 waters 💧💧💧 You have ${updatedViewer.petals}🌸 left.`
-      );
-      return;
+    // Consumables route through ctx.performAction (logic lives in index.js perform functions)
+    const performFn = ctx.performAction && ctx.performAction[item.id];
+    const cost = (ctx.costs && ctx.costs[item.id] !== undefined) ? ctx.costs[item.id] : item.cost;
+    const slotMsg = slotNum != null ? String(slotNum) : '';
+    if (typeof ctx.runPetalCostAction === 'function') {
+      return ctx.runPetalCostAction(channel, username, item.name.toLowerCase(), cost, () => performFn(username, slotMsg));
     }
   }
 
   client.say(channel, `@${username} ❌ Something went wrong processing that purchase.`);
 }
 
-module.exports = { cmdShop, cmdBuy };
+module.exports = { cmdShop, cmdBuy, SHOP_CATALOG };
