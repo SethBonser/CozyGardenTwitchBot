@@ -274,9 +274,9 @@ client.on('message', (chan, userstate, message, self) => {
 
 function gardenHelpMessage() {
   if (USE_CHANNEL_REWARDS) {
-    return '🌿 Commands: !garden [slot] | !seed | !plant [slot] | !discard | !petals | !gardeners | !shop | !buyseed !buyuncommon !buyrare !buywater !buyfertilize [slot] !buyrain !buytonic [slot] !buycompost !buyexpand — Channel Rewards: Get Seed | Water Plant | Harvest Plant | Expand Garden';
+    return '🌿 Commands: <!garden [slot]> <!seed> <!plant [slot]> <!discard> <!water [slot]> <!harvest [slot]> <!petals> <!gardeners> <!shop> <!buyseed> <!buyuncommon> <!buyrare> <!buyfertilize [slot]> <!buyrain> <!buytonic [slot]> <!buycompost> <!buyexpand> — Channel Rewards: Get Seed | Water Plant | Harvest Plant | Expand Garden';
   }
-  return `🌿 Commands: !startgarden (${STARTER_PETALS}🌸) | !buyseed (${SEED_COST}🌸) | !buyuncommon (${UNCOMMON_SEED_COST}🌸) | !buyrare (${RARE_SEED_COST}🌸) | !buywater (${WATER_COST}🌸) | !buyfertilize [slot] | !buyrain | !buytonic [slot] | !plant [slot] | !harvest [slot] | !expand | !garden [slot] | !seed | !petals | !gardeners | !shop`;
+  return `🌿 Commands: <!startgarden (${STARTER_PETALS}🌸)> <!buyseed (${SEED_COST}🌸)> <!buyuncommon (${UNCOMMON_SEED_COST}🌸)> <!buyrare (${RARE_SEED_COST}🌸)> <!water [slot] (${WATER_COST}🌸)> <!buyfertilize [slot]> <!buyrain> <!buytonic [slot]> <!plant [slot]> <!harvest [slot]> <!buyexpand> <!garden [slot]> <!seed> <!petals> <!gardeners> <!shop>`;
 }
 
 function cmdStartGarden(client, chan, userstate) {
