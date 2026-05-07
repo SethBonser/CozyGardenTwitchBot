@@ -232,11 +232,11 @@ cd cozy-garden-bot</code></pre>
       <tr><th>Reward Name</th><th>Suggested Cost</th><th>Notes</th></tr>
     </thead>
     <tbody>
-      <tr><td><strong>Get a Seed</strong></td><td>100–500 pts</td><td>Gives a random seed (60% common / 30% uncommon / 10% rare)</td></tr>
-      <tr><td><strong>Rare Seed</strong></td><td>500–2000 pts</td><td>Guaranteed rare plant seed</td></tr>
-      <tr><td><strong>Water Plant</strong></td><td>50–200 pts</td><td>Waters a plant (auto-picks or viewer can specify a slot)</td></tr>
-      <tr><td><strong>Harvest Plant</strong></td><td>100–300 pts</td><td>Harvests a bloomed plant and awards petals</td></tr>
-      <tr><td><strong>Expand Garden</strong></td><td>1000–5000 pts</td><td>Adds one slot to the shared garden</td></tr>
+      <tr><td><strong>Get a Seed</strong></td><td>100–500 pts</td><td>Gives the redeeming viewer a random seed (60% common / 30% uncommon / 10% rare). They then use <code>!plant</code> to place it.</td></tr>
+      <tr><td><strong>Rare Seed</strong></td><td>500–2000 pts</td><td>Gives a guaranteed rare plant seed. Set the channel point cost higher than Get a Seed.</td></tr>
+      <tr><td><strong>Water Plant</strong></td><td>50–200 pts</td><td>Waters a plant in the garden. Viewers can include a slot number in the reward message to target a specific slot.</td></tr>
+      <tr><td><strong>Harvest Plant</strong></td><td>100–300 pts</td><td>Harvests a bloomed plant and awards petals. Payout is shared with everyone active in chat.</td></tr>
+      <tr><td><strong>Expand Garden</strong></td><td>1000–5000 pts</td><td>Adds one slot to the shared garden (up to the <code>MAX_GARDEN_SLOTS</code> limit in <code>.env</code>).</td></tr>
     </tbody>
   </table>
 
@@ -244,6 +244,51 @@ cd cozy-garden-bot</code></pre>
     <span class="callout-icon">📋</span>
     <div>
       After creating each reward, have someone redeem it once with the bot running. The reward's ID will be printed to the terminal — copy it into your <code>.env</code> and restart the bot.
+    </div>
+  </div>
+
+  <div class="subsection">
+    <h3>⚙️ Key Configuration Options</h3>
+    <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:0.75rem">
+      These <code>.env</code> variables directly affect how Channel Rewards mode behaves. See the full variable reference above for defaults and all options.
+    </p>
+    <div class="cmd-grid">
+
+      <div class="cmd-row">
+        <code>USE_CHANNEL_REWARDS</code>
+        <div class="cmd-desc">
+          <code>true</code> (default) — actions are channel point rewards. <code>false</code> — petals-only mode, all actions cost petals.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>MAX_GARDEN_SLOTS</code>
+        <div class="cmd-desc">
+          The maximum number of slots the garden can expand to (default: <code>10</code>). The community starts at 3 and grows by purchasing expansions.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>ACTIVE_VIEWER_WINDOW_MIN</code>
+        <div class="cmd-desc">
+          How recently (in minutes) a viewer must have chatted to receive a share of the harvest payout. Default: <code>30</code>.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>IGNORED_USERS</code>
+        <div class="cmd-desc">
+          Comma-separated list of bot usernames to exclude from tracking and payouts (e.g. <code>nightbot,streamelements</code>).
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <code>OVERLAY_PORT</code>
+        <div class="cmd-desc">
+          Port for the OBS overlay web server. Default: <code>8080</code>. Add <code>http://localhost:8080/</code> as a Browser Source in OBS.
+        </div>
+      </div>
+
     </div>
   </div>
 
