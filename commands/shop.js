@@ -19,40 +19,40 @@ const CATEGORIES = [
 const SHOP_CATALOG = {
   // ── 🌱 Seeds (action, cost from ctx.costs at runtime) ───────────────────────
   seed: {
-    id: 'seed', name: 'Get a Seed', emoji: '🎁',
+    id: 'seed', name: 'Get a Seed', emoji: '🎁', cmd: '!buyseed',
     type: 'action', category: 'seeds', actionId: 'seed', rewardName: 'Get a Seed',
     description: 'Receive a random seed (60% common / 30% uncommon / 10% rare)',
   },
   uncommon_seed: {
-    id: 'uncommon_seed', name: 'Uncommon Seed', emoji: '🍀',
+    id: 'uncommon_seed', name: 'Uncommon Seed', emoji: '🍀', cmd: '!buyuncommon',
     type: 'action', category: 'seeds', actionId: 'uncommon_seed', rewardName: 'Uncommon Seed',
     petalsOnly: true,  // Petals-only — there is no channel reward equivalent
     description: 'Receive an uncommon seed (75% uncommon / 25% rare — never common)',
   },
   rare_seed: {
-    id: 'rare_seed', name: 'Rare Seed', emoji: '🌟',
+    id: 'rare_seed', name: 'Rare Seed', emoji: '🌟', cmd: '!buyrare',
     type: 'action', category: 'seeds', actionId: 'rare_seed', rewardName: 'Rare Seed',
     description: 'Receive a guaranteed rare seed',
   },
 
   // ── 🌿 Garden actions (action, cost from ctx.costs at runtime) ─────────────
   water: {
-    id: 'water', name: 'Water Plant', emoji: '💧',
+    id: 'water', name: 'Water Plant', emoji: '💧', cmd: '!water',
     type: 'action', category: 'garden', actionId: 'water', rewardName: 'Water Plant',
     description: 'Water a plant (auto-picks lowest progress; pass a slot number to target)',
   },
   harvest: {
-    id: 'harvest', name: 'Harvest', emoji: '🌺',
+    id: 'harvest', name: 'Harvest', emoji: '🌺', cmd: '!harvest',
     type: 'action', category: 'garden', actionId: 'harvest', rewardName: 'Harvest Plant',
     description: 'Harvest a bloomed plant (free — it\'s the payout)',
   },
   expand: {
-    id: 'expand', name: 'Expand Garden', emoji: '🌿',
+    id: 'expand', name: 'Expand Garden', emoji: '🌿', cmd: '!buyexpand',
     type: 'action', category: 'garden', actionId: 'expand', rewardName: 'Expand Garden',
     description: 'Add one slot to the shared garden',
   },
   fertilize: {
-    id: 'fertilize', name: 'Fertilize', emoji: '🌱',
+    id: 'fertilize', name: 'Fertilize', emoji: '🌱', cmd: '!buyfertilize <slot>',
     type: 'action', category: 'garden', actionId: 'fertilize', rewardName: 'Fertilize',
     petalsOnly: true,  // Petals only — no channel reward equivalent
     description: 'Apply fertilizer to an empty slot — the next plant there grows with HALF the waters needed at every stage. Use !buyfertilize <slot>',
@@ -60,19 +60,19 @@ const SHOP_CATALOG = {
 
   // ── 🪣 Watering Tools (one-time stream-wide upgrades) ──────────────────────
   compost_bin: {
-    id: 'compost_bin', name: 'Compost Bin', emoji: '🪣🌿',
+    id: 'compost_bin', name: 'Compost Bin', emoji: '🪣🌿', cmd: '!buycompost',
     cost: 600, type: 'upgrade', category: 'tools',
     description: 'Stream upgrade: All plants need 20% fewer waters per stage',
     detail: '-20% waters needed for all plants',
   },
   copper_can: {
-    id: 'copper_can', name: 'Copper Can', emoji: '🪣',
+    id: 'copper_can', name: 'Copper Can', emoji: '🪣', cmd: '!buycopper',
     cost: 400, type: 'upgrade', category: 'tools',
     description: '(Vestigial) Stream upgrade — used to reduce a watering cooldown that no longer exists',
     detail: 'vestigial — safe to ignore',
   },
   silver_can: {
-    id: 'silver_can', name: 'Silver Can', emoji: '🪣✨',
+    id: 'silver_can', name: 'Silver Can', emoji: '🪣✨', cmd: '!buysilver',
     cost: 800, type: 'upgrade', category: 'tools',
     description: '(Vestigial) Stream upgrade — see Copper Can. Requires Copper Can.',
     detail: 'vestigial — safe to ignore',
@@ -80,13 +80,13 @@ const SHOP_CATALOG = {
 
   // ── 🧪 Boosts (per-viewer single-use consumables) ──────────────────────────
   rain_cloud: {
-    id: 'rain_cloud', name: 'Rain Cloud', emoji: '🌧️',
+    id: 'rain_cloud', name: 'Rain Cloud', emoji: '🌧️', cmd: '!buyrain',
     cost: 200, type: 'consumable', category: 'boosts',
     description: 'Consumable: Instantly waters ALL occupied garden slots once',
     detail: 'Waters every plant in the garden',
   },
   growth_tonic: {
-    id: 'growth_tonic', name: 'Growth Tonic', emoji: '🧪',
+    id: 'growth_tonic', name: 'Growth Tonic', emoji: '🧪', cmd: '!buytonic <slot>',
     cost: 150, type: 'consumable', category: 'boosts',
     description: 'Consumable: Your next !water on a chosen slot counts as 3 waters',
     detail: 'Use !buytonic <slot> to activate on a specific slot',
@@ -99,21 +99,21 @@ function cmdShop(client, channel, userstate, ctx = {}) {
   const useChannelRewards = !!ctx.useChannelRewards;
   const costs = ctx.costs || {};
 
-  // Format a single shop entry into "<name> price>" depending on type
+  // Format a single shop entry into "<cmd name price>" depending on type
   function formatItem(i) {
     if (i.type === 'action') {
       // petalsOnly actions show their petal price even in channel-rewards mode
-      if (useChannelRewards && !i.petalsOnly) return `<${i.name} (channel reward)>`;
+      if (useChannelRewards && !i.petalsOnly) return `<${i.cmd} ${i.name} (channel reward)>`;
       const cost = costs[i.actionId];
       const priceLabel = cost && cost > 0 ? `${cost} petals` : 'free';
-      return `<${i.name} ${priceLabel}>`;
+      return `<${i.cmd} ${i.name} ${priceLabel}>`;
     }
     if (i.type === 'upgrade') {
       const owned = db.isUpgradePurchased(i.id);
-      return `<${i.name} ${i.cost} petals${owned ? ' ✅' : ''}>`;
+      return `<${i.cmd} ${i.name} ${i.cost} petals${owned ? ' ✅' : ''}>`;
     }
     // consumable
-    return `<${i.name} ${i.cost} petals>`;
+    return `<${i.cmd} ${i.name} ${i.cost} petals>`;
   }
 
   // Build "<label>: <item> <item> <item>" for one category
