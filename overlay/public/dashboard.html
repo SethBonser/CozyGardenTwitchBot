@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🌸 CozyGarden Dashboard</title>
+  <style>
+    :root {
+      --pink:       #e8779a;
+      --pink-light: #f7c5d5;
+      --pink-pale:  #fdf0f4;
+      --green:      #6ab87a;
+      --green-dark: #4a8c5a;
+      --cream:      #fef9f0;
+      --text:       #3d2535;
+      --text-muted: #8a6070;
+      --border:     #f0cdd8;
+      --shadow:     rgba(180,80,110,0.10);
+      --radius:     12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--cream);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Nav ─────────────────────────────────────────────────────────────── */
+    nav {
+      background: var(--pink);
+      color: #fff;
+      padding: 0.75rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .nav-brand { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.02em; }
+    .nav-user-form {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .nav-user-form input {
+      border: 2px solid rgba(255,255,255,0.4);
+      border-radius: 8px;
+      padding: 0.35rem 0.65rem;
+      font-size: 0.9rem;
+      background: rgba(255,255,255,0.18);
+      color: #fff;
+      outline: none;
+      width: 160px;
+    }
+    .nav-user-form input::placeholder { color: rgba(255,255,255,0.65); }
+    .nav-user-form input:focus { border-color: #fff; }
+    .btn-nav {
+      background: rgba(255,255,255,0.22);
+      border: 2px solid rgba(255,255,255,0.5);
+      color: #fff;
+      border-radius: 8px;
+      padding: 0.35rem 0.75rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: background 0.15s;
+    }
+    .btn-nav:hover { background: rgba(255,255,255,0.35); }
+
+    /* ── Layout ──────────────────────────────────────────────────────────── */
+    .page { max-width: 960px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+
+    /* ── Cards ───────────────────────────────────────────────────────────── */
+    .card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 2px 8px var(--shadow);
+      margin-bottom: 1.25rem;
+      overflow: hidden;
+    }
+    .card-head {
+      background: var(--pink-pale);
+      border-bottom: 1px solid var(--border);
+      padding: 0.6rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--pink);
+    }
+    .card-body { padding: 1rem; }
+
+    /* ── Stats row ───────────────────────────────────────────────────────── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.85rem;
+      margin-bottom: 1.25rem;
+    }
+    .stat-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      text-align: center;
+      box-shadow: 0 2px 6px var(--shadow);
+    }
+    .stat-icon { font-size: 1.6rem; margin-bottom: 0.3rem; }
+    .stat-value { font-size: 1.5rem; font-weight: 800; color: var(--pink); }
+    .stat-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-sub { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem; }
+
+    /* ── Garden slots ────────────────────────────────────────────────────── */
+    .slot-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+    .slot {
+      border: 2px solid var(--border);
+      border-radius: 10px;
+      padding: 0.6rem 0.8rem;
+      min-width: 120px;
+      flex: 1 1 120px;
+      background: var(--pink-pale);
+      font-size: 0.85rem;
+    }
+    .slot.bloom { border-color: var(--pink); background: #fff0f5; }
+    .slot.empty { opacity: 0.6; }
+    .slot-num { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .slot-plant { font-size: 1.1rem; font-weight: 700; }
+    .slot-stage { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem; }
+    .progress-bar { background: var(--border); border-radius: 4px; height: 6px; margin-top: 0.35rem; overflow: hidden; }
+    .progress-fill { background: var(--green); height: 100%; border-radius: 4px; transition: width 0.3s; }
+    .bloom-badge { display: inline-block; background: var(--pink); color: #fff; border-radius: 6px; font-size: 0.7rem; padding: 0.1rem 0.4rem; margin-top: 0.3rem; }
+
+    /* ── Shop ────────────────────────────────────────────────────────────── */
+    .shop-category { margin-bottom: 1.25rem; }
+    .shop-category-label {
+      font-weight: 700;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+      padding-bottom: 0.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .shop-items { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+    .shop-item {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.65rem 0.75rem;
+      background: var(--pink-pale);
+      min-width: 170px;
+      flex: 1 1 170px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .shop-item.owned { opacity: 0.55; }
+    .shop-item-name { font-weight: 700; font-size: 0.9rem; }
+    .shop-item-desc { font-size: 0.75rem; color: var(--text-muted); line-height: 1.35; }
+    .shop-item-footer { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.25rem; flex-wrap: wrap; }
+    .cost-tag {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.78rem;
+      padding: 0.15rem 0.45rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .reward-tag {
+      background: #fff3cd;
+      border: 1px solid #f0d060;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      padding: 0.15rem 0.45rem;
+      color: #7a5c00;
+    }
+    .owned-tag {
+      background: #d4f0d4;
+      border: 1px solid var(--green);
+      border-radius: 6px;
+      font-size: 0.75rem;
+      padding: 0.15rem 0.45rem;
+      color: var(--green-dark);
+    }
+    .slot-input {
+      width: 52px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.2rem 0.4rem;
+      font-size: 0.82rem;
+      text-align: center;
+      outline: none;
+    }
+    .slot-input:focus { border-color: var(--pink); }
+    .btn-buy {
+      background: var(--pink);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      padding: 0.25rem 0.65rem;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .btn-buy:hover { background: #c95c80; }
+    .btn-buy:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── History table ───────────────────────────────────────────────────── */
+    .history-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .history-table th {
+      text-align: left;
+      padding: 0.4rem 0.6rem;
+      background: var(--pink-pale);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid var(--border);
+    }
+    .history-table td { padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--border); }
+    .history-table tr:last-child td { border-bottom: none; }
+    .rarity-badge {
+      display: inline-block;
+      border-radius: 5px;
+      font-size: 0.72rem;
+      padding: 0.1rem 0.4rem;
+      font-weight: 600;
+    }
+    .rarity-common   { background: #f0f0f0; color: #666; }
+    .rarity-uncommon { background: #d4f0d4; color: var(--green-dark); }
+    .rarity-rare     { background: #fce8f8; color: #8a2a8a; }
+
+    /* ── Toast ───────────────────────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(120%);
+      background: #3d2535;
+      color: #fff;
+      border-radius: 10px;
+      padding: 0.75rem 1.25rem;
+      font-size: 0.9rem;
+      max-width: 420px;
+      text-align: center;
+      transition: transform 0.25s ease;
+      z-index: 999;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+    #toast.error { background: #b03060; }
+
+    /* ── Placeholder ─────────────────────────────────────────────────────── */
+    .placeholder {
+      color: var(--text-muted);
+      text-align: center;
+      padding: 1.5rem;
+      font-size: 0.9rem;
+    }
+
+    /* ── Honour notice ───────────────────────────────────────────────────── */
+    .notice {
+      background: #fff8e1;
+      border: 1px solid #f0d060;
+      border-radius: 8px;
+      padding: 0.5rem 0.85rem;
+      font-size: 0.8rem;
+      color: #7a5c00;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">🌸 CozyGarden Dashboard</div>
+  <form class="nav-user-form" id="userForm">
+    <input id="usernameInput" type="text" placeholder="Your Twitch username" autocomplete="off" spellcheck="false" />
+    <button type="submit" class="btn-nav">View</button>
+  </form>
+</nav>
+
+<div class="page">
+
+  <div class="notice">
+    ℹ️ Enter your Twitch username (lowercase) to see your garden stats and shop. Actions are posted to Twitch chat too!
+  </div>
+
+  <!-- Stats -->
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card">
+      <div class="stat-icon">🌸</div>
+      <div class="stat-value" id="statPetals">—</div>
+      <div class="stat-label">Petals</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🌱</div>
+      <div class="stat-value" id="statSeedEmoji">—</div>
+      <div class="stat-label">Held Seed</div>
+      <div class="stat-sub" id="statSeedName"></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🌺</div>
+      <div class="stat-value" id="statHarvests">—</div>
+      <div class="stat-label">Harvests</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">💧</div>
+      <div class="stat-value" id="statWaters">—</div>
+      <div class="stat-label">Waters Given</div>
+    </div>
+  </div>
+
+  <!-- Garden -->
+  <div class="card">
+    <div class="card-head">🌿 Garden</div>
+    <div class="card-body">
+      <div class="slot-grid" id="gardenSlots">
+        <div class="placeholder">Loading garden…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shop -->
+  <div class="card" id="shopCard">
+    <div class="card-head">🛒 Shop</div>
+    <div class="card-body" id="shopBody">
+      <div class="placeholder">Loading shop…</div>
+    </div>
+  </div>
+
+  <!-- Harvest History -->
+  <div class="card">
+    <div class="card-head">🌺 Harvest History</div>
+    <div class="card-body" id="historyBody">
+      <div class="placeholder">Enter your username to see your harvest history.</div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+let currentUser = localStorage.getItem('cgb_username') || '';
+let shopData = null;
+let statsRefreshTimer = null;
+
+// ── Utilities ────────────────────────────────────────────────────────────────
+function showToast(msg, isError = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg.replace(/^@\S+\s*/, ''); // strip leading @mention
+  el.className = 'show' + (isError ? ' error' : '');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.className = ''; }, 4000);
+}
+
+function timeAgo(ms) {
+  const secs = Math.floor((Date.now() - ms) / 1000);
+  if (secs < 60)  return `${secs}s ago`;
+  if (secs < 3600) return `${Math.floor(secs/60)}m ago`;
+  if (secs < 86400) return `${Math.floor(secs/3600)}h ago`;
+  return `${Math.floor(secs/86400)}d ago`;
+}
+
+function rarityBadge(rarity) {
+  return `<span class="rarity-badge rarity-${rarity}">${
+    rarity === 'rare' ? '🌟 rare' : rarity === 'uncommon' ? '🟢 uncommon' : '⚪ common'
+  }</span>`;
+}
+
+// ── Viewer stats ─────────────────────────────────────────────────────────────
+async function loadViewer(username) {
+  if (!username) return;
+  try {
+    const r = await fetch(`/api/viewer/${encodeURIComponent(username)}`);
+    const v = await r.json();
+    document.getElementById('statPetals').textContent   = v.petals ?? '—';
+    document.getElementById('statHarvests').textContent = v.harvest_count ?? '—';
+    document.getElementById('statWaters').textContent   = v.waters_given ?? '—';
+    if (v.held_seed) {
+      document.getElementById('statSeedEmoji').textContent = v.seed_emoji || '🌱';
+      document.getElementById('statSeedName').textContent  = v.seed_name || v.held_seed;
+    } else {
+      document.getElementById('statSeedEmoji').textContent = '—';
+      document.getElementById('statSeedName').textContent  = 'none';
+    }
+  } catch (e) { console.warn('loadViewer:', e); }
+}
+
+// ── History ──────────────────────────────────────────────────────────────────
+async function loadHistory(username) {
+  const el = document.getElementById('historyBody');
+  if (!username) {
+    el.innerHTML = '<div class="placeholder">Enter your username to see your harvest history.</div>';
+    return;
+  }
+  try {
+    const r = await fetch(`/api/viewer/${encodeURIComponent(username)}/history`);
+    const rows = await r.json();
+    if (!rows.length) {
+      el.innerHTML = '<div class="placeholder">No harvests yet — go grow something! 🌱</div>';
+      return;
+    }
+    el.innerHTML = `<table class="history-table">
+      <thead><tr>
+        <th>Plant</th><th>Rarity</th><th>Petals</th><th>Slot</th><th>When</th>
+      </tr></thead>
+      <tbody>${rows.map(row => `<tr>
+        <td>${row.plant_emoji || ''} ${row.plant_name || row.plant_id}</td>
+        <td>${rarityBadge(row.rarity)}</td>
+        <td>+${row.petals}🌸</td>
+        <td>${row.slot}</td>
+        <td title="${new Date(row.harvested_at).toLocaleString()}">${timeAgo(row.harvested_at)}</td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  } catch (e) {
+    el.innerHTML = '<div class="placeholder">Could not load history.</div>';
+  }
+}
+
+// ── Garden ───────────────────────────────────────────────────────────────────
+function renderGarden(state) {
+  const el = document.getElementById('gardenSlots');
+  if (!state || !state.slots) { el.innerHTML = '<div class="placeholder">No garden data.</div>'; return; }
+  el.innerHTML = state.slots.map(s => {
+    if (s.empty) {
+      const fert = s.fertilized ? ' 🌱<small style="font-size:0.7rem;color:var(--green-dark)"> fertilized</small>' : '';
+      return `<div class="slot empty"><div class="slot-num">Slot ${s.slot}</div><div class="slot-plant">— empty${fert}</div></div>`;
+    }
+    if (s.isBloom) {
+      return `<div class="slot bloom">
+        <div class="slot-num">Slot ${s.slot}</div>
+        <div class="slot-plant">${s.emoji} ${s.name}</div>
+        <div><span class="bloom-badge">🌺 Ready to harvest!</span></div>
+      </div>`;
+    }
+    const stages = ['🌱 Seed','🌿 Sprout','🌸 Budding'];
+    const pct = s.watersNeeded > 0 ? Math.round((s.watersDone / s.watersNeeded) * 100) : 100;
+    return `<div class="slot">
+      <div class="slot-num">Slot ${s.slot}</div>
+      <div class="slot-plant">${s.emoji} ${s.name}</div>
+      <div class="slot-stage">${stages[s.stage] || '?'} · ${s.watersDone}/${s.watersNeeded}💧</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+async function loadGarden() {
+  try {
+    const r = await fetch('/api/garden');
+    renderGarden(await r.json());
+  } catch (e) { console.warn('loadGarden:', e); }
+}
+
+// ── Shop ─────────────────────────────────────────────────────────────────────
+const CATEGORY_LABELS = {
+  seeds:  '🌱 Seeds',
+  garden: '🌿 Garden Actions',
+  tools:  '🪣 Watering Tools',
+  boosts: '🧪 Boosts',
+};
+
+async function loadShop() {
+  try {
+    const r = await fetch('/api/shop');
+    shopData = await r.json();
+    renderShop();
+  } catch (e) { console.warn('loadShop:', e); }
+}
+
+function renderShop() {
+  if (!shopData) return;
+  const el = document.getElementById('shopBody');
+  const byCategory = {};
+  for (const item of shopData.items) {
+    (byCategory[item.category] = byCategory[item.category] || []).push(item);
+  }
+
+  let html = '';
+  for (const [catId, label] of Object.entries(CATEGORY_LABELS)) {
+    const items = byCategory[catId] || [];
+    if (!items.length) continue;
+    html += `<div class="shop-category">
+      <div class="shop-category-label">${label}</div>
+      <div class="shop-items">${items.map(itemCard).join('')}</div>
+    </div>`;
+  }
+  el.innerHTML = html || '<div class="placeholder">No items available.</div>';
+}
+
+function itemCard(item) {
+  let footerHtml = '';
+  if (item.owned) {
+    footerHtml = `<span class="owned-tag">✅ Owned</span>`;
+  } else if (item.isChannelReward) {
+    footerHtml = `<span class="reward-tag">🏆 Channel Reward</span>`;
+  } else if (!item.prereqMet) {
+    footerHtml = `<span class="cost-tag" style="opacity:0.6">Requires Copper Can</span>`;
+  } else {
+    const costTag = item.cost > 0 ? `<span class="cost-tag">${item.cost}🌸</span>` : `<span class="cost-tag" style="background:#d4f0d4">free</span>`;
+    let slotInput = '';
+    if (item.needsSlot) {
+      const req = item.needsSlot === 'required';
+      slotInput = `<input class="slot-input" type="number" min="1" max="20" placeholder="${req ? 'slot!' : 'slot'}" data-item="${item.id}" />`;
+    }
+    const disabled = !item.canBuy ? ' disabled' : '';
+    footerHtml = `${costTag}${slotInput}<button class="btn-buy" data-item="${item.id}"${disabled}>Buy</button>`;
+  }
+
+  return `<div class="shop-item${item.owned ? ' owned' : ''}">
+    <div class="shop-item-name">${item.emoji} ${item.name}</div>
+    <div class="shop-item-desc">${item.description}</div>
+    <div class="shop-item-footer">${footerHtml}</div>
+  </div>`;
+}
+
+// ── Buy handler ───────────────────────────────────────────────────────────────
+document.getElementById('shopBody').addEventListener('click', async e => {
+  const btn = e.target.closest('.btn-buy');
+  if (!btn || btn.disabled) return;
+  if (!currentUser) { showToast('Enter your username first!', true); return; }
+
+  const itemId = btn.dataset.item;
+  const slotInput = document.querySelector(`.slot-input[data-item="${itemId}"]`);
+  const slot = slotInput ? slotInput.value.trim() : '';
+
+  const item = shopData?.items?.find(i => i.id === itemId);
+  if (item?.needsSlot === 'required' && !slot) {
+    showToast('Please enter a slot number!', true);
+    slotInput?.focus();
+    return;
+  }
+
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: currentUser, action: itemId, slot: slot || undefined }),
+    });
+    const result = await r.json();
+    const msg = (result.messages || [])[0] || (result.ok ? 'Done!' : 'Something went wrong.');
+    showToast(msg, !result.ok);
+    if (result.ok) {
+      await Promise.all([loadViewer(currentUser), loadShop()]);
+      if (slot && slotInput) slotInput.value = '';
+    }
+  } catch (e) {
+    showToast('Request failed — is the bot running?', true);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Username form ─────────────────────────────────────────────────────────────
+function setUser(username) {
+  currentUser = username.toLowerCase().trim();
+  document.getElementById('usernameInput').value = currentUser;
+  localStorage.setItem('cgb_username', currentUser);
+  refreshAll();
+}
+
+async function refreshAll() {
+  await Promise.all([
+    loadViewer(currentUser),
+    loadHistory(currentUser),
+    loadGarden(),
+    loadShop(),
+  ]);
+}
+
+document.getElementById('userForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const val = document.getElementById('usernameInput').value.trim();
+  if (val) setUser(val);
+});
+
+// ── WebSocket for live garden updates ─────────────────────────────────────────
+function connectWS() {
+  const ws = new WebSocket(`ws://${location.host}`);
+  ws.onmessage = e => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'state') {
+        renderGarden(msg.data);
+        // Also refresh viewer stats on any garden event (harvest, water, etc.)
+        if (currentUser) loadViewer(currentUser);
+      }
+    } catch {}
+  };
+  ws.onclose = () => setTimeout(connectWS, 3000);
+}
+connectWS();
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+if (currentUser) {
+  document.getElementById('usernameInput').value = currentUser;
+}
+loadGarden();
+loadShop();
+if (currentUser) {
+  loadViewer(currentUser);
+  loadHistory(currentUser);
+}
+
+// Refresh viewer stats every 30s in case other viewers do things
+setInterval(() => {
+  if (currentUser) loadViewer(currentUser);
+}, 30_000);
+</script>
+
+</body>
+</html>

@@ -74,6 +74,19 @@ db.exec(`
     applied_at INTEGER,
     PRIMARY KEY (slot, buff)
   );
+
+  -- Per-viewer harvest log: one row per harvest action.
+  CREATE TABLE IF NOT EXISTS harvest_log (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    username     TEXT NOT NULL,
+    plant_id     TEXT,
+    plant_name   TEXT,
+    plant_emoji  TEXT,
+    rarity       TEXT,
+    petals       INTEGER,
+    slot         INTEGER,
+    harvested_at INTEGER
+  );
 `);
 
 // Insert default config if not present
@@ -309,6 +322,26 @@ function consumeEffect(id) {
   db.prepare(`DELETE FROM active_effects WHERE uses_left <= 0`).run();
 }
 
+// ─── Harvest log ───────────────────────────────────────────────────────────────
+
+function logHarvest(username, plant, petals, slot) {
+  db.prepare(`
+    INSERT INTO harvest_log (username, plant_id, plant_name, plant_emoji, rarity, petals, slot, harvested_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(username, plant.id, plant.name, plant.emoji, plant.rarity, petals, slot, Date.now());
+}
+
+function getHarvestHistory(username, limit = 20) {
+  return db.prepare(`
+    SELECT * FROM harvest_log WHERE username = ? ORDER BY harvested_at DESC LIMIT ?
+  `).all(username, Math.min(limit, 100));
+}
+
+function getHarvestCount(username) {
+  const row = db.prepare(`SELECT COUNT(*) AS count FROM harvest_log WHERE username = ?`).get(username);
+  return row ? row.count : 0;
+}
+
 module.exports = {
   db,
   events,
@@ -341,4 +374,7 @@ module.exports = {
   hasSlotBuff,
   getSlotBuffs,
   clearSlotBuff,
+  logHarvest,
+  getHarvestHistory,
+  getHarvestCount,
 };
