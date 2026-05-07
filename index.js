@@ -550,12 +550,19 @@ function performHarvest(username, message) {
   const sharedNote = others > 0
     ? ` Shared with ${others} other gardener${others === 1 ? '' : 's'} (everyone gets +${petals}🌸).`
     : '';
-  return {
-    ok: true,
-    messages: [
-      `@${username} 🌺 Harvested a ${plant.emoji} ${plant.name} (${rarityLabel(plant.rarity)})! +${petals}🌸 to you (total: ${viewer.petals}🌸).${sharedNote} Slot ${targetSlotNum} is empty and ready for a new seed!`,
-    ],
-  };
+
+  const messages = [
+    `@${username} 🌺 Harvested a ${plant.emoji} ${plant.name} (${rarityLabel(plant.rarity)})! +${petals}🌸 to you (total: ${viewer.petals}🌸).${sharedNote} Slot ${targetSlotNum} is empty and ready for a new seed!`,
+  ];
+
+  // Notify every other recipient individually with their new balance
+  for (const recipient of recipients) {
+    if (recipient === username.toLowerCase()) continue;
+    const v = db.getViewer(recipient);
+    messages.push(`@${recipient} 🌸 +${petals} petals from the harvest! Balance: ${v.petals} petals`);
+  }
+
+  return { ok: true, messages };
 }
 
 function performExpand(username) {
