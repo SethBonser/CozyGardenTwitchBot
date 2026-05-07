@@ -482,7 +482,7 @@ function performWater(username, message) {
   const tonicMsg = waterAmount > 1 ? ` (Growth Tonic: x${waterAmount}💧)` : '';
   return {
     ok: true,
-    messages: [`@${username} 💧 Watered slot ${targetSlot.slot}!${tonicMsg}${advanceMsg} [${formatSlot(updatedSlot)}]`],
+    messages: [`@${username} 💧 Watered slot ${targetSlot.slot}!${tonicMsg}${advanceMsg} ${formatSlot(updatedSlot)}`],
   };
 }
 

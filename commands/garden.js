@@ -57,7 +57,7 @@ function cmdGarden(client, channel, userstate, args) {
   const slots = db.getAllSlots();
   const header = `🌿 The Garden (${slotCount} slots):`;
   const lines = slots.map(s => formatSlot(s));
-  client.say(channel, header + ' | ' + lines.join(' | '));
+  client.say(channel, header + ' ' + lines.join(' '));
 }
 
 // ─── !water [slot] ────────────────────────────────────────────────────────────
@@ -153,7 +153,7 @@ function cmdWater(client, channel, userstate, args) {
 
   const tonicMsg = waterAmount > 1 ? ` (Growth Tonic: x${waterAmount}💧)` : '';
   client.say(channel,
-    `@${username} 💧 Watered slot ${targetSlot.slot}!${tonicMsg}${advanceMsg} [${formatSlot(updatedSlot)}]`
+    `@${username} 💧 Watered slot ${targetSlot.slot}!${tonicMsg}${advanceMsg} ${formatSlot(updatedSlot)}`
   );
 }
 

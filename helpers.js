@@ -75,22 +75,22 @@ function progressBar(done, needed, width = 8) {
 
 function formatSlot(slotRow) {
   if (!slotRow || !slotRow.plant_id) {
-    return `[${slotRow.slot}] 🪨 Empty`;
+    return `<Slot ${slotRow.slot}: Empty>`;
   }
   const info = getGrowthInfo(slotRow);
-  if (!info) return `[${slotRow.slot}] ❓ Unknown plant`;
+  if (!info) return `<Slot ${slotRow.slot}: Unknown plant>`;
 
   const { plant, stage, isBloom, watersNeeded, watersDone } = info;
   const stageEmoji = STAGE_EMOJIS[Math.min(stage, 3)];
   const stageName  = STAGE_NAMES[Math.min(stage, 3)];
 
   if (isBloom) {
-    return `[${slotRow.slot}] ${plant.emoji} ${plant.name} — ${stageEmoji} ${stageName}! Ready to harvest 🌺`;
+    return `<Slot ${slotRow.slot}: ${plant.emoji} ${plant.name} — ${stageEmoji} ${stageName}! Ready to harvest>`;
   }
 
   const effective = getEffectiveWatersNeeded(slotRow.slot, watersNeeded);
   const bar = progressBar(watersDone, effective);
-  return `[${slotRow.slot}] ${plant.emoji} ${plant.name} (${plant.rarity}) — ${stageEmoji} ${stageName} [${bar}] ${watersDone}/${effective}💧`;
+  return `<Slot ${slotRow.slot}: ${plant.emoji} ${plant.name} (${plant.rarity}) — ${stageEmoji} ${stageName} [${bar}] ${watersDone}/${effective}💧>`;
 }
 
 // ─── Rarity display ───────────────────────────────────────────────────────────
