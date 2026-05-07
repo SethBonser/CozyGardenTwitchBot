@@ -13,6 +13,7 @@ A cozy Twitch chatbot with a shared, expanding virtual garden. Viewers redeem ch
 - **35 real-world plants across 3 rarities** — common, uncommon, and rare flora with different watering profiles and petal payouts
 - **Botanical fun facts** — every plant comes with a real-world (or in-universe) trivia tidbit revealed when its seed is unwrapped
 - **Live OBS overlay** — a transparent browser-source overlay renders the garden in real time, complete with a wooden raised garden box, custom 64×64 pixel-art sprites, stage-based scaling, wind-sway animation, and a pop + sparkle animation whenever a plant advances a stage
+- **Viewer dashboard** — a web app viewers can open in their browser to see their petal balance, held seed, harvest history, a live garden view, and a graphical shop — optionally exposed publicly via localtunnel
 - **Petals economy** — harvest plants to earn 🌸 petals, then spend them in the shop
 - **Stream-wide upgrade & per-viewer consumables** — Compost Bin permanently improves the garden; Rain Cloud and Growth Tonic give one-shot boosts
 - **Persistent state** — SQLite database keeps the garden alive across restarts
@@ -79,10 +80,13 @@ All config lives in `.env`:
 | `OVERLAY_PORT` | optional | Port for the OBS overlay server (default `8080`) |
 | `ACTIVE_VIEWER_WINDOW_MIN` | optional | How recently someone must have chatted to share in a harvest payout, in minutes (default `30`) |
 | `IGNORED_USERS` | optional | Comma-separated list of usernames (other bots) to exclude from activity tracking and harvest rewards. The CozyGardenBot's own account is always ignored. |
+| `RAIN_COST` | optional | Cost of `!buyrain` (Rain Cloud consumable, default `200`) |
+| `TONIC_COST` | optional | Cost of `!buytonic <slot>` (Growth Tonic consumable, default `150`) |
 | `WATER_COOLDOWN_ENABLED` | optional | `true` (default) to enforce a per-viewer watering cooldown in petals-only mode; `false` to disable entirely (useful for testing) |
 | `WATER_COOLDOWN_MINUTES` | optional | Base cooldown between waters in petals-only mode, in minutes (default `10`) |
 | `COPPER_CAN_COOLDOWN_MINUTES` | optional | Cooldown once the Copper Can upgrade is purchased (default `8`) |
 | `SILVER_CAN_COOLDOWN_MINUTES` | optional | Cooldown once the Silver Can upgrade is purchased (default `6`) |
+| `DASHBOARD_TUNNEL` | optional | `false` (default) — dashboard is local-only; `true` — expose it publicly via localtunnel (requires `npm install localtunnel`). URL is printed to the console and announced in chat. |
 
 ¹ Only used when `USE_CHANNEL_REWARDS=true`. Reward IDs can be left blank initially — the bot will print the UUID to the console the first time someone redeems an unrecognized reward.<br>
 ² Only used when `USE_CHANNEL_REWARDS=false`.<br>
@@ -371,6 +375,54 @@ The mapping from `plant_id` (lowercase, from [data/plants.json](data/plants.json
 
 ---
 
+## 📊 Viewer Dashboard
+
+The bot includes a graphical web dashboard that viewers can open in their browser to interact with the garden without typing chat commands.
+
+### What the dashboard shows
+
+- **Stats** — current petal balance, held seed (with rarity badge), total harvests, and total waters given
+- **Garden view** — live slot-by-slot view of the garden synced via WebSocket (same feed as the OBS overlay)
+- **Shop** — graphical shop organized by category; viewers can buy seeds, consumables, and upgrades directly from the browser; slot-targeting items (Fertilize, Growth Tonic) show an inline slot picker
+- **Harvest history** — a table of every plant the viewer personally harvested, with emoji, rarity, petal payout, and timestamp
+
+All purchases made via the dashboard are processed by the bot and posted to Twitch chat exactly like a chat command, so the stream still sees the activity.
+
+Authentication is honor-system: viewers type their Twitch username once and it's saved in their browser's local storage. There's no login gate — this is a cozy game, not a bank.
+
+### Local access (default)
+
+The dashboard is served by the same server as the OBS overlay. With the bot running:
+
+```
+http://localhost:8080/dashboard
+```
+
+This is only accessible on the streamer's machine. Viewers need the public tunnel to reach it.
+
+### Public access via localtunnel
+
+Set `DASHBOARD_TUNNEL=true` in `.env` (and install localtunnel if needed):
+
+```bash
+npm install localtunnel
+```
+
+```env
+DASHBOARD_TUNNEL=true
+```
+
+On startup the bot will:
+1. Open a localtunnel to your local port
+2. Print the public URL to the console
+3. Post it in chat: `🌸 Garden Dashboard is live! Open https://xxxx.loca.lt/dashboard …`
+
+The URL changes every time the bot restarts (localtunnel assigns a random subdomain), so consider re-posting it after each stream start.
+
+> ⚠️ localtunnel routes traffic through a third-party relay server. The dashboard contains only game state (no passwords, no payment info), so this is acceptable for a cozy streaming bot — but don't enable it if you'd rather keep all traffic local.
+
+---
+
 ## 📁 Project Structure
 
 ```
@@ -389,10 +441,12 @@ cozy/
 │   ├── harvest.js        # cmdHarvest helper (legacy — harvest now runs via reward / !buy)
 │   └── shop.js           # !shop, !buy, shop catalog (uses shopContext from index.js)
 ├── overlay/
-│   ├── server.js         # HTTP + WebSocket server, broadcasts garden state on db change
+│   ├── server.js         # HTTP + WebSocket server, broadcasts garden state on db change,
+│   │                     # serves dashboard API (/api/viewer, /api/garden, /api/shop, /api/action)
 │   └── public/
 │       ├── index.html    # OBS Browser Source page (transparent body, canvas)
-│       └── overlay.js    # Canvas renderer — wooden box, sprites, sway, info strip
+│       ├── overlay.js    # Canvas renderer — wooden box, sprites, sway, info strip
+│       └── dashboard.html # Viewer-facing web dashboard — stats, shop GUI, harvest history
 ├── scripts/
 │   ├── seed-test-garden.js  # Populate the garden with one plant at every stage for overlay testing
 │   └── reset-garden.js      # Clear all slots and reset the garden to default size
@@ -411,6 +465,7 @@ cozy/
 | `active_effects` | Pending per-viewer consumables (e.g. Growth Tonic on a slot) |
 | `slot_buffs` | Slot-bound persistent buffs (e.g. fertilizer) — auto-cleared when the slot is harvested/discarded |
 | `config` | Garden-wide settings, including current `garden_slots` count |
+| `harvest_log` | One row per harvest — `username`, `plant_id`, `plant_name`, `plant_emoji`, `rarity`, `petals`, `slot`, `harvested_at` (ms timestamp). Powers the viewer dashboard's harvest history tab. |
 
 ---
 
@@ -426,19 +481,21 @@ cozy/
 - **Connection diagnostics** — the bot logs IRC lifecycle events (`connecting`, `logon`, `connected`, `disconnected`, `notice`) and prints a verbose error message with common causes if connection fails
 - **Debug toggles** in `.env`: set `DEBUG_TMI=true` to log raw IRC traffic, or `DEBUG_REWARDS=true` to log every chat message's reward-tag presence/absence
 
-### Architecture: one set of action functions, three entry points
+### Architecture: one set of action functions, four entry points
 
-To keep the two play modes from forking the codebase, every game-state-changing action lives in a single perform function (`performGetSeed`, `performWater`, `performHarvest`, `performExpand`) that returns a result object describing what messages to post. Three different dispatchers call into them with the same arguments:
+To keep the two play modes from forking the codebase, every game-state-changing action lives in a single perform function (`performGetSeed`, `performWater`, `performHarvest`, `performExpand`, `performRainCloud`, `performGrowthTonic`) that returns a result object describing what messages to post. Four different dispatchers call into them with the same arguments:
 
 ```
 Channel reward redemption ─┐
                            │
-!water / !harvest / !etc.  ├──► performGetSeed / performWater / performHarvest / performExpand
+!water / !harvest / !etc.  ├──► perform* action functions
                            │
-!buyseed / !buywater       ─┘
+!buyseed / !buywater       ┤
+                           │
+Dashboard POST /api/action ─┘
 ```
 
-Adding a new entry point (Bits, sub-only, command alias, etc.) means writing a new dispatcher and reusing the same perform function. Changing how watering works means editing one place. The `shopContext` object (in `index.js`) is the small bundle of mode flag + costs + perform functions + `runPetalCostAction` helper that gets injected into `cmdShop` and `cmdBuy`.
+Adding a new entry point (Bits, sub-only, command alias, etc.) means writing a new dispatcher and reusing the same perform function. Changing how watering works means editing one place. The `shopContext` object (in `index.js`) is the small bundle of mode flag + costs + perform functions + `runPetalCostAction` helper that gets injected into `cmdShop` and `cmdBuy`. The dashboard's `handleDashboardAction` in `index.js` uses the same perform functions and posts results back to Twitch chat so the stream stays in sync.
 
 ### Robustness & input validation
 

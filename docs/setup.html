@@ -219,6 +219,71 @@ cd cozy-garden-bot</code></pre>
     <div>The overlay auto-reconnects if the bot restarts, so you don't need to refresh the Browser Source mid-stream.</div>
   </div>
 
+  <!-- ── Viewer Dashboard ── -->
+  <div class="section-header">
+    <span class="section-icon">📊</span>
+    <h2>Viewer Dashboard</h2>
+  </div>
+
+  <p>The bot includes a web dashboard viewers can open in their own browser to check their stats, browse the shop, and review their harvest history — no chat commands needed.</p>
+
+  <div class="mode-compare" style="margin-bottom:1.5rem">
+    <div class="mode-box">
+      <h4>What viewers see</h4>
+      <ul>
+        <li>🌸 Current petal balance &amp; held seed (with rarity badge)</li>
+        <li>🌿 Live garden view — synced in real time via WebSocket</li>
+        <li>🛒 Graphical shop, organized by category</li>
+        <li>📜 Personal harvest history — every plant they harvested, with emoji, rarity &amp; petals</li>
+      </ul>
+    </div>
+    <div class="mode-box">
+      <h4>How it works</h4>
+      <ul>
+        <li>Viewers type their Twitch username once — it's saved in their browser</li>
+        <li>Shop purchases made in the dashboard are posted to Twitch chat automatically</li>
+        <li>Garden updates appear instantly via the same WebSocket feed as the OBS overlay</li>
+      </ul>
+    </div>
+  </div>
+
+  <ol class="steps">
+    <li>
+      <div>
+        <strong>Make sure the bot is running</strong>
+        The dashboard is served by the same server as the overlay. Start the bot with <code>npm start</code> — no extra configuration needed.
+      </div>
+    </li>
+    <li>
+      <div>
+        <strong>Access the dashboard locally</strong>
+        Open this URL in a browser on the same machine:
+        <pre><code>http://localhost:8080/dashboard</code></pre>
+        This is only visible to you (the streamer). To share it with viewers, see the tunnel option below.
+      </div>
+    </li>
+    <li>
+      <div>
+        <strong>(Optional) Expose a public URL with localtunnel</strong>
+        Install localtunnel and enable the tunnel in <code>.env</code>:
+        <pre><code>npm install localtunnel</code></pre>
+        Then set in your <code>.env</code>:
+        <pre><code>DASHBOARD_TUNNEL=true</code></pre>
+        On the next bot start, a public URL is printed to the console and posted to chat automatically. The URL changes each restart, so re-post it after each stream start.
+      </div>
+    </li>
+  </ol>
+
+  <div class="callout callout-pink">
+    <span class="callout-icon">📋</span>
+    <div>
+      <strong>Dashboard-specific env variables:</strong>
+      <br><code>DASHBOARD_TUNNEL</code> — <code>false</code> (default) keeps the dashboard local-only. Set to <code>true</code> to expose it publicly via localtunnel (requires <code>npm install localtunnel</code>).
+      <br><code>RAIN_COST</code> — petal cost of the 🌧️ Rain Cloud consumable in the shop (default: <code>200</code>).
+      <br><code>TONIC_COST</code> — petal cost of the 🧪 Growth Tonic consumable in the shop (default: <code>150</code>).
+    </div>
+  </div>
+
   <!-- ── Channel Rewards Setup ── -->
   <div class="section-header">
     <span class="section-icon">🏆</span>
