@@ -11,7 +11,7 @@ const SEED_COST = parseInt(process.env.SEED_COST || '30', 10);
 function noSeedHint() {
   return USE_CHANNEL_REWARDS
     ? 'Redeem the "Get a Seed" channel point reward to get one.'
-    : `Use !buy seed (${SEED_COST}🌸) or !buy rare seed to get one.`;
+    : `Use !buyseed (${SEED_COST}🌸) or !buyrare to get one.`;
 }
 
 // If the viewer holds a seed that's no longer in plants.json, auto-discard so they aren't stuck.

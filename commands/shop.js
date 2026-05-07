@@ -55,7 +55,7 @@ const SHOP_CATALOG = {
     id: 'fertilize', name: 'Fertilize', emoji: '🌱',
     type: 'action', category: 'garden', actionId: 'fertilize', rewardName: 'Fertilize',
     petalsOnly: true,  // Petals only — no channel reward equivalent
-    description: 'Apply fertilizer to an empty slot — the next plant there grows with HALF the waters needed at every stage. Use !buy fertilize <slot>',
+    description: 'Apply fertilizer to an empty slot — the next plant there grows with HALF the waters needed at every stage. Use !buyfertilize <slot>',
   },
 
   // ── 🪣 Watering Tools (one-time stream-wide upgrades) ──────────────────────
@@ -89,7 +89,7 @@ const SHOP_CATALOG = {
     id: 'growth_tonic', name: 'Growth Tonic', emoji: '🧪',
     cost: 150, type: 'consumable', category: 'boosts',
     description: 'Consumable: Your next !water on a chosen slot counts as 3 waters',
-    detail: 'Use !buy growth tonic <slot> to activate on a specific slot',
+    detail: 'Use !buytonic <slot> to activate on a specific slot',
   },
 };
 
@@ -296,7 +296,7 @@ function cmdBuy(client, channel, userstate, args, ctx = {}) {
 
       if (!slotNum || slotNum < 1 || slotNum > slotCount) {
         return client.say(channel,
-          `@${username} 🧪 Specify a slot for your Growth Tonic! e.g. !buy growth tonic 2 (slots 1-${slotCount})`
+          `@${username} 🧪 Specify a slot for your Growth Tonic! e.g. !buytonic 2 (slots 1-${slotCount})`
         );
       }
 

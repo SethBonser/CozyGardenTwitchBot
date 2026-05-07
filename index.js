@@ -579,7 +579,7 @@ function performFertilize(username, message) {
   if (!parsed.ok) {
     return {
       ok: false,
-      messages: [`@${username} 🌱 Pick a slot to fertilize (1-${slotCount}). Try: !buy fertilize <slot>`],
+      messages: [`@${username} 🌱 Pick a slot to fertilize (1-${slotCount}). Try: !buyfertilize <slot>`],
     };
   }
   const slot = parsed.slot;
@@ -697,8 +697,8 @@ client.connect().then(() => {
 
   // Announce in chat with the command + reward summary, mode-aware
   const welcome = USE_CHANNEL_REWARDS
-    ? "🌿 CozyGardenBot is awake! Commands: !garden [slot] | !seed | !plant [slot] | !discard | !petals | !gardeners | !shop | !buy <item> | !gardenhelp — Channel Rewards: Get Seed | Water Plant | Harvest Plant | Expand Garden 🌸"
-    : `🌿 CozyGardenBot is awake! New here? Type !startgarden to claim ${STARTER_PETALS}🌸 starter petals. Spend them: !buy seed (${SEED_COST}🌸) → !plant → !water [slot] (${WATER_COST}🌸) → !harvest. Type !gardenhelp for the full list. 🌸`;
+    ? "🌿 CozyGardenBot is awake! Commands: !garden [slot] | !seed | !plant [slot] | !discard | !petals | !gardeners | !shop | !buyseed !buyrare !buyrain !buytonic [slot] | !gardenhelp — Channel Rewards: Get Seed | Water Plant | Harvest Plant | Expand Garden 🌸"
+    : `🌿 CozyGardenBot is awake! New here? Type !startgarden to claim ${STARTER_PETALS}🌸 starter petals. Spend them: !buyseed (${SEED_COST}🌸) → !plant → !buywater (${WATER_COST}🌸) → !harvest. Type !gardenhelp for the full list. 🌸`;
   client.say(channel, welcome)
     .catch(err => console.warn('   (Could not post welcome message:', err && err.message, ')'));
 }).catch(err => {
