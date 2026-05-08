@@ -71,12 +71,14 @@
       background: linear-gradient(135deg, #c9446b 0%, #9b5e8a 100%);
       padding: 0.7rem 1rem;
       display: flex;
+      flex-direction: column;
       align-items: center;
       gap: 0.5rem;
-      flex-wrap: wrap;
+      position: relative;
+      text-align: center;
     }
     .dp-brand { color: #fff; font-weight: 800; font-size: 0.95rem; }
-    .dp-user-form { margin-left: auto; display: flex; align-items: center; gap: 0.4rem; }
+    .dp-user-form { display: flex; align-items: center; gap: 0.4rem; }
     .dp-input {
       background: rgba(255,255,255,0.2);
       border: 1px solid rgba(255,255,255,0.35);
@@ -96,13 +98,66 @@
       font-weight: 700;
       cursor: default;
     }
+    .dp-nav-refresh {
+      background: rgba(255,255,255,0.22);
+      border: none;
+      border-radius: 5px;
+      color: #fff;
+      padding: 0.22rem 1.5rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: default;
+    }
     .dp-popout-btn {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.75rem;
       background: rgba(255,255,255,0.15);
       border: 1px solid rgba(255,255,255,0.3);
       border-radius: 5px;
       color: #fff;
       padding: 0.2rem 0.55rem;
       font-size: 0.78rem;
+      cursor: default;
+    }
+    .dp-notice {
+      background: #fff8e1;
+      border: 1px solid #f0d060;
+      border-radius: 6px;
+      padding: 0.4rem 0.65rem;
+      font-size: 0.75rem;
+      color: #7a5c00;
+      margin-bottom: 0.75rem;
+    }
+    .dp-shop-items { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    .dp-shop-item {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem 0.6rem;
+      background: #fdf0f4;
+      min-width: 140px;
+      flex: 1 1 140px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    .dp-cost-tag {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      font-size: 0.72rem;
+      padding: 0.1rem 0.35rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .dp-buy-btn {
+      background: var(--pink-dark, #c9446b);
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      padding: 0.18rem 0.5rem;
+      font-size: 0.72rem;
+      font-weight: 700;
       cursor: default;
     }
     .dp-tabs {
@@ -463,16 +518,20 @@
 
     <!-- Bot nav bar -->
     <div class="dp-nav">
-      <span class="dp-brand">🌸 CozyGardenBot</span>
+      <button class="dp-popout-btn" title="Open in popup window">⧉</button>
+      <span class="dp-brand">🌸 CozyGarden Dashboard</span>
       <div class="dp-user-form">
         <input class="dp-input" value="viewer123" readonly />
-        <button class="dp-load-btn">Load</button>
+        <button class="dp-load-btn">View</button>
       </div>
-      <button class="dp-popout-btn" title="Open in popup window">⧉</button>
+      <button class="dp-nav-refresh">🔄 Refresh</button>
     </div>
 
     <!-- Body (no tabs — scrollable single page) -->
     <div class="dp-body">
+
+      <!-- Notice -->
+      <div class="dp-notice">ℹ️ Enter your Twitch username (lowercase) to see your garden stats and shop.</div>
 
       <!-- Stats -->
       <div class="dp-stats">
@@ -537,6 +596,39 @@
         </div>
       </div>
 
+      <!-- Shop snippet -->
+      <div class="dp-section-label">Shop</div>
+      <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.06em;padding-bottom:0.2rem;border-bottom:1px solid var(--border);margin-bottom:0.4rem">🌱 Seeds</div>
+      <div class="dp-shop-items">
+        <div class="dp-shop-item">
+          <div style="font-weight:700;font-size:0.8rem">🌻 Sunflower</div>
+          <div style="font-size:0.68rem;color:var(--text-muted)">Common flower seed</div>
+          <div style="display:flex;gap:0.3rem;margin-top:0.2rem;align-items:center">
+            <span class="dp-cost-tag">100🌸</span>
+            <button class="dp-buy-btn">Buy</button>
+          </div>
+        </div>
+        <div class="dp-shop-item">
+          <div style="font-weight:700;font-size:0.8rem">🌹 Rose</div>
+          <div style="font-size:0.68rem;color:var(--text-muted)">Uncommon flower seed</div>
+          <div style="display:flex;gap:0.3rem;margin-top:0.2rem;align-items:center">
+            <span class="dp-cost-tag">300🌸</span>
+            <input style="width:38px;border:1px solid var(--border);border-radius:4px;padding:0.1rem 0.3rem;font-size:0.72rem;text-align:center" placeholder="slot" readonly />
+            <button class="dp-buy-btn">Buy</button>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:var(--text-muted);letter-spacing:0.06em;padding-bottom:0.2rem;border-bottom:1px solid var(--border);margin-bottom:0.4rem">🪣 Watering Tools</div>
+      <div class="dp-shop-items">
+        <div class="dp-shop-item">
+          <div style="font-weight:700;font-size:0.8rem">🪣 Copper Can</div>
+          <div style="font-size:0.68rem;color:var(--text-muted)">Waters 1 plant for free daily</div>
+          <div style="display:flex;gap:0.3rem;margin-top:0.2rem;align-items:center">
+            <span style="background:#d4f0d4;border:1px solid #6ab87a;border-radius:5px;font-size:0.72rem;padding:0.1rem 0.35rem;color:#4a8c5a;font-weight:600">✅ Owned</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Harvest history snippet -->
       <div class="dp-section-label">Harvest History</div>
       <table class="dp-history">
@@ -566,9 +658,6 @@
       </table>
     </div>
 
-    <!-- Refresh strip -->
-    <div class="dp-refresh-row">
-      <button class="dp-refresh-btn">🔄 Refresh</button>
     </div>
   </div>
 
