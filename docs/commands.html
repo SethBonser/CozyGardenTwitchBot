@@ -36,6 +36,354 @@
   </div>
 
   <!-- ════════════════════════════════════════════════════════════
+       VIEWER DASHBOARD
+  ═════════════════════════════════════════════════════════════ -->
+  <div class="section-header">
+    <span class="section-icon">📊</span>
+    <h2>Viewer Dashboard</h2>
+  </div>
+  <p style="color:var(--text-muted);margin-bottom:1.25rem">
+    The viewer dashboard is a graphical web app where viewers can check their petal balance, browse the shop, see the live garden, and review their harvest history — all without typing a single chat command. It's served by the bot and optionally exposed publicly via Cloudflare Tunnel so anyone watching can open it on their phone or laptop.
+  </p>
+
+  <div class="cmd-grid" style="margin-bottom:2rem">
+    <div class="cmd-row">
+      <code>!dashboard</code>
+      <div class="cmd-desc">
+        Posts the dashboard URL to chat so viewers can open it in their browser. The link goes to the public Cloudflare Tunnel URL when <code>DASHBOARD_TUNNEL=true</code>, or to the local URL otherwise. Works in both Channel Rewards and Petals modes.
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard preview mockup -->
+  <style>
+    .dp-frame {
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 4px 20px var(--shadow);
+      margin: 0 0 2rem;
+      font-size: 0.85rem;
+      background: #fff8fb;
+    }
+    .dp-chrome {
+      background: #1a0d15;
+      padding: 0.45rem 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .dp-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .dp-dot.r { background: #ff5f57; }
+    .dp-dot.y { background: #febc2e; }
+    .dp-dot.g { background: #28c840; }
+    .dp-urlbar {
+      flex: 1;
+      background: #2e1a25;
+      color: #c8a0b0;
+      border-radius: 4px;
+      padding: 0.2rem 0.6rem;
+      font-size: 0.78rem;
+      font-family: 'Cascadia Code', monospace;
+      margin: 0 0.5rem;
+    }
+    .dp-nav {
+      background: linear-gradient(135deg, #c9446b 0%, #9b5e8a 100%);
+      padding: 0.7rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .dp-brand { color: #fff; font-weight: 800; font-size: 0.95rem; }
+    .dp-user-form { margin-left: auto; display: flex; align-items: center; gap: 0.4rem; }
+    .dp-input {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.35);
+      border-radius: 5px;
+      color: #fff;
+      padding: 0.2rem 0.5rem;
+      font-size: 0.8rem;
+      width: 90px;
+    }
+    .dp-load-btn {
+      background: rgba(255,255,255,0.22);
+      border: none;
+      border-radius: 5px;
+      color: #fff;
+      padding: 0.2rem 0.55rem;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: default;
+    }
+    .dp-popout-btn {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 5px;
+      color: #fff;
+      padding: 0.2rem 0.55rem;
+      font-size: 0.78rem;
+      cursor: default;
+    }
+    .dp-tabs {
+      display: flex;
+      gap: 0.35rem;
+      padding: 0.6rem 1rem 0;
+      background: #fef0f6;
+      border-bottom: 2px solid var(--border);
+    }
+    .dp-tab {
+      padding: 0.35rem 0.85rem;
+      border-radius: 8px 8px 0 0;
+      border: 1.5px solid var(--border);
+      border-bottom: none;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: default;
+      background: #fff;
+      color: var(--text-muted);
+    }
+    .dp-tab.active { background: #fff; color: var(--pink-dark); border-color: var(--pink-mid); }
+    .dp-body { padding: 1rem; }
+    .dp-stats {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.6rem;
+      margin-bottom: 1rem;
+    }
+    .dp-stat {
+      background: #fff;
+      border: 1.5px solid var(--border);
+      border-radius: 9px;
+      padding: 0.6rem 0.75rem;
+      text-align: center;
+    }
+    .dp-stat .dp-label { font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+    .dp-stat .dp-val { font-size: 1.1rem; font-weight: 800; color: var(--pink-dark); margin-top: 0.1rem; }
+    .dp-stat .dp-badge {
+      display: inline-block;
+      padding: 0.1em 0.45em;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: var(--pink-light);
+      color: var(--pink-dark);
+      margin-left: 0.25rem;
+      vertical-align: middle;
+    }
+    .dp-section-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 0.9rem 0 0.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.3rem;
+    }
+    .dp-garden { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .dp-slot {
+      background: #fff;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem 0.6rem;
+      text-align: center;
+      min-width: 80px;
+      flex: 1;
+    }
+    .dp-slot .dp-slotnum { font-size: 0.68rem; color: var(--text-muted); font-weight: 600; margin-bottom: 0.15rem; }
+    .dp-slot .dp-sprite { font-size: 1.6rem; display: block; margin: 0.1rem 0; line-height: 1; }
+    .dp-slot .dp-plantname { font-size: 0.72rem; font-weight: 700; color: var(--text); }
+    .dp-slot .dp-stage { font-size: 0.65rem; color: var(--text-muted); }
+    .dp-slot.bloom { border-color: #f0c050; background: #fffdf0; }
+    .dp-history { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    .dp-history th { background: var(--pink-light); color: var(--pink-dark); padding: 0.35rem 0.6rem; text-align: left; font-weight: 700; }
+    .dp-history td { padding: 0.35rem 0.6rem; border-bottom: 1px solid var(--border); color: var(--text-muted); }
+    .dp-history tr:last-child td { border-bottom: none; }
+    .dp-rarity-common   { color: #666; font-weight: 600; }
+    .dp-rarity-uncommon { color: var(--green-dark); font-weight: 600; }
+    .dp-rarity-rare     { color: #7a40c8; font-weight: 600; }
+    .dp-refresh-row { border-top: 2px solid var(--border); background: #fef0f6; padding: 0.5rem 1rem; display: flex; justify-content: center; }
+    .dp-refresh-btn { background: none; border: 1.5px solid var(--border); border-radius: 7px; padding: 0.3rem 1rem; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); cursor: default; }
+  </style>
+
+  <div class="dp-frame">
+    <!-- Browser chrome -->
+    <div class="dp-chrome">
+      <div class="dp-dot r"></div>
+      <div class="dp-dot y"></div>
+      <div class="dp-dot g"></div>
+      <div class="dp-urlbar">https://xxxx.trycloudflare.com/dashboard</div>
+    </div>
+
+    <!-- Bot nav bar -->
+    <div class="dp-nav">
+      <span class="dp-brand">🌸 CozyGardenBot</span>
+      <div class="dp-user-form">
+        <input class="dp-input" value="viewer123" readonly />
+        <button class="dp-load-btn">Load</button>
+      </div>
+      <button class="dp-popout-btn" title="Open in popup window">⧉</button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="dp-tabs">
+      <div class="dp-tab active">Stats</div>
+      <div class="dp-tab">Garden</div>
+      <div class="dp-tab">Shop</div>
+      <div class="dp-tab">History</div>
+    </div>
+
+    <!-- Body -->
+    <div class="dp-body">
+
+      <!-- Stats -->
+      <div class="dp-stats">
+        <div class="dp-stat">
+          <div class="dp-label">🌸 Petals</div>
+          <div class="dp-val">2,450</div>
+        </div>
+        <div class="dp-stat">
+          <div class="dp-label">🌱 Held Seed</div>
+          <div class="dp-val" style="font-size:0.88rem">Rose <span class="dp-badge" style="background:var(--green-light);color:var(--green-dark)">uncommon</span></div>
+        </div>
+        <div class="dp-stat">
+          <div class="dp-label">🌺 Harvests</div>
+          <div class="dp-val">12</div>
+        </div>
+        <div class="dp-stat">
+          <div class="dp-label">💧 Waters Given</div>
+          <div class="dp-val">47</div>
+        </div>
+      </div>
+
+      <!-- Garden snapshot -->
+      <div class="dp-section-label">Live Garden</div>
+      <div class="dp-garden">
+        <div class="dp-slot bloom">
+          <div class="dp-slotnum">Slot 1</div>
+          <span class="dp-sprite">🌺</span>
+          <div class="dp-plantname">Lavender</div>
+          <div class="dp-stage" style="color:#c8920c;font-weight:700">Blooming ✨</div>
+        </div>
+        <div class="dp-slot">
+          <div class="dp-slotnum">Slot 2</div>
+          <span class="dp-sprite">🌿</span>
+          <div class="dp-plantname">Sunflower</div>
+          <div class="dp-stage">Sprout · 2/4💧</div>
+        </div>
+        <div class="dp-slot">
+          <div class="dp-slotnum">Slot 3</div>
+          <span class="dp-sprite">🌱</span>
+          <div class="dp-plantname">Orchid</div>
+          <div class="dp-stage">Seed · 0/3💧</div>
+        </div>
+        <div class="dp-slot" style="color:var(--text-muted)">
+          <div class="dp-slotnum">Slot 4</div>
+          <span class="dp-sprite" style="opacity:0.35">·</span>
+          <div class="dp-plantname" style="font-style:italic;font-weight:400;color:var(--text-muted)">empty</div>
+          <div class="dp-stage"></div>
+        </div>
+      </div>
+
+      <!-- Harvest history snippet -->
+      <div class="dp-section-label">Harvest History</div>
+      <table class="dp-history">
+        <thead>
+          <tr>
+            <th>Plant</th>
+            <th>Rarity</th>
+            <th>Petals</th>
+            <th>When</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>🌺 Chocolate Cosmo</td>
+            <td><span class="dp-rarity-rare">Rare</span></td>
+            <td>600 🌸</td>
+            <td>10 min ago</td>
+          </tr>
+          <tr>
+            <td>🪷 Lily</td>
+            <td><span class="dp-rarity-uncommon">Uncommon</span></td>
+            <td>250 🌸</td>
+            <td>1h ago</td>
+          </tr>
+          <tr>
+            <td>🌼 Daisy</td>
+            <td><span class="dp-rarity-common">Common</span></td>
+            <td>100 🌸</td>
+            <td>3h ago</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Refresh strip -->
+    <div class="dp-refresh-row">
+      <button class="dp-refresh-btn">🔄 Refresh</button>
+    </div>
+  </div>
+
+  <!-- Feature breakdown -->
+  <div class="subsection">
+    <h3>📋 What's on the dashboard</h3>
+    <div class="cmd-grid">
+
+      <div class="cmd-row">
+        <strong style="align-self:center">Stats tab</strong>
+        <div class="cmd-desc">
+          Petal balance, held seed with rarity badge, total harvests, and total waters given — the viewer's full garden profile at a glance.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <strong style="align-self:center">Garden tab</strong>
+        <div class="cmd-desc">
+          Live slot-by-slot view of the shared garden, synced via WebSocket. Each slot shows the plant's pixel-art sprite at its current growth stage, stage label, and water progress. Blooming slots are highlighted in gold.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <strong style="align-self:center">Shop tab</strong>
+        <div class="cmd-desc">
+          A graphical shop organized by category (seeds, garden actions, upgrades, boosts). Viewers can buy items directly — slot-targeting items like Growth Tonic and Fertilize show an inline slot picker. Purchases are processed identically to chat commands and posted to Twitch chat.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <strong style="align-self:center">History tab</strong>
+        <div class="cmd-desc">
+          Every plant the viewer personally harvested, with the bloom sprite, plant name, rarity, petal payout, and timestamp.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <strong style="align-self:center">⧉ Popout button</strong>
+        <div class="cmd-desc">
+          Top-right corner of the nav bar. Opens the dashboard in a compact 430 × 750 popup — great for keeping it open alongside a stream on a second monitor or phone. The username carries over automatically and the popout button hides itself inside the popup.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <strong style="align-self:center">🔄 Refresh button</strong>
+        <div class="cmd-desc">
+          Bottom of the nav bar. Re-fetches all data (stats, garden, shop, history) without a full page reload — the typed username is never lost.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="callout callout-green" style="margin-bottom:2.5rem">
+    <span class="callout-icon">🌐</span>
+    <div>
+      By default the dashboard is local-only (<code>http://localhost:8080/dashboard</code>). Set <code>DASHBOARD_TUNNEL=true</code> in <code>.env</code> and install the <code>cloudflared</code> CLI to expose it publicly. The bot will post the public URL to chat on startup — or viewers can ask for it anytime with <code>!dashboard</code>.
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════
        VIEWER COMMANDS
   ═════════════════════════════════════════════════════════════ -->
   <div class="section-header">

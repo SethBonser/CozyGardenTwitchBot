@@ -236,6 +236,7 @@ Each plant has its own watering profile — rare plants take more waters per sta
 | `!shop` | List shop items and prices |
 | `!buy <item> [slot]` | Purchase a shop item by name — or use a shorthand: `!buyseed` `!buyrare` `!buyuncommon` `!buywater` `!buyharvest` `!buyexpand` `!buyfertilize <slot>` `!buyrain` `!buytonic <slot>` `!buycompost` |
 | `!ghelp` | Quick reference for all commands and rewards (auto-adapts to current mode) |
+| `!dashboard` | Posts the dashboard URL to chat so viewers can open it in their browser |
 
 **Petals-only mode adds these chat commands** (when `USE_CHANNEL_REWARDS=false`):
 
