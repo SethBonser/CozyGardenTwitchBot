@@ -30,18 +30,25 @@
     nav {
       background: var(--pink);
       color: #fff;
-      padding: 0.75rem 1.5rem;
+      padding: 0.85rem 1rem;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
+      gap: 0.6rem;
+      position: relative;
+      text-align: center;
     }
     .nav-brand { font-size: 1.15rem; font-weight: 700; letter-spacing: 0.02em; }
+    #popoutBtn {
+      position: absolute;
+      top: 0.6rem;
+      right: 0.75rem;
+    }
     .nav-user-form {
       display: flex;
       gap: 0.5rem;
       align-items: center;
-      flex-wrap: wrap;
+      justify-content: center;
     }
     .nav-user-form input {
       border: 2px solid rgba(255,255,255,0.4);
@@ -67,9 +74,23 @@
       transition: background 0.15s;
     }
     .btn-nav:hover { background: rgba(255,255,255,0.35); }
+    .btn-refresh {
+      display: block;
+      margin: 0.5rem auto 0.25rem;
+      background: var(--pink);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.5rem 2rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-refresh:hover { background: #c95c80; }
 
     /* ── Layout ──────────────────────────────────────────────────────────── */
-    .page { max-width: 960px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+    .page { max-width: 960px; margin: 0 auto; padding: 0.85rem 0.75rem 2rem; }
 
     /* ── Cards ───────────────────────────────────────────────────────────── */
     .card {
@@ -96,46 +117,45 @@
     /* ── Stats row ───────────────────────────────────────────────────────── */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 0.85rem;
-      margin-bottom: 1.25rem;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.6rem;
+      margin-bottom: 1rem;
     }
     .stat-card {
       background: #fff;
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 1rem;
+      padding: 0.75rem 0.5rem;
       text-align: center;
       box-shadow: 0 2px 6px var(--shadow);
     }
-    .stat-icon { font-size: 1.6rem; margin-bottom: 0.3rem; }
-    .stat-value { font-size: 1.5rem; font-weight: 800; color: var(--pink); }
-    .stat-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem; text-transform: uppercase; letter-spacing: 0.05em; }
-    .stat-sub { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.2rem; }
+    .stat-icon { font-size: 1.3rem; margin-bottom: 0.2rem; }
+    .stat-value { font-size: 1.3rem; font-weight: 800; color: var(--pink); }
+    .stat-label { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.1rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-sub { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.15rem; }
 
     /* ── Garden slots ────────────────────────────────────────────────────── */
     .slot-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.6rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+      gap: 0.5rem;
     }
     .slot {
       border: 2px solid var(--border);
       border-radius: 10px;
-      padding: 0.6rem 0.8rem;
-      min-width: 120px;
-      flex: 1 1 120px;
+      padding: 0.5rem 0.6rem;
       background: var(--pink-pale);
-      font-size: 0.85rem;
+      font-size: 0.82rem;
+      text-align: center;
     }
     .slot.bloom { border-color: var(--pink); background: #fff0f5; }
     .slot.empty { opacity: 0.6; }
-    .slot-num { font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.25rem; text-transform: uppercase; letter-spacing: 0.05em; }
-    .slot-plant { font-size: 1.1rem; font-weight: 700; }
-    .slot-stage { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem; }
-    .progress-bar { background: var(--border); border-radius: 4px; height: 6px; margin-top: 0.35rem; overflow: hidden; }
+    .slot-num { font-size: 0.65rem; color: var(--text-muted); margin-bottom: 0.2rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .slot-plant { font-size: 1rem; font-weight: 700; }
+    .slot-stage { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.1rem; }
+    .progress-bar { background: var(--border); border-radius: 4px; height: 5px; margin-top: 0.3rem; overflow: hidden; }
     .progress-fill { background: var(--green); height: 100%; border-radius: 4px; transition: width 0.3s; }
-    .bloom-badge { display: inline-block; background: var(--pink); color: #fff; border-radius: 6px; font-size: 0.7rem; padding: 0.1rem 0.4rem; margin-top: 0.3rem; }
+    .bloom-badge { display: inline-block; background: var(--pink); color: #fff; border-radius: 6px; font-size: 0.65rem; padding: 0.1rem 0.35rem; margin-top: 0.25rem; }
 
     /* ── Shop ────────────────────────────────────────────────────────────── */
     .shop-category { margin-bottom: 1.25rem; }
@@ -296,11 +316,13 @@
 <body>
 
 <nav>
+  <button class="btn-nav" id="popoutBtn" onclick="openPopout()" title="Open as popout">⧉</button>
   <div class="nav-brand">🌸 CozyGarden Dashboard</div>
   <form class="nav-user-form" id="userForm">
     <input id="usernameInput" type="text" placeholder="Your Twitch username" autocomplete="off" spellcheck="false" />
     <button type="submit" class="btn-nav">View</button>
   </form>
+  <button class="btn-nav" onclick="refreshAll()">🔄 Refresh</button>
 </nav>
 
 <div class="page">
@@ -360,6 +382,7 @@
     </div>
   </div>
 
+
 </div>
 
 <div id="toast"></div>
@@ -391,6 +414,15 @@ function spriteImg(plant_id, stage, size, cssClass) {
   const path = spritePath(plant_id, stage);
   if (!path) return '';
   return `<img src="${path}" width="${size}" height="${size}" class="${cssClass}" onerror="this.style.display='none'">`;
+}
+
+// ── Popout ───────────────────────────────────────────────────────────────────
+function openPopout() {
+  window.open('/dashboard', 'cgb-dashboard', 'width=430,height=750,resizable=yes,scrollbars=yes');
+}
+// Hide the popout button when we're already in a popup window
+if (window.opener) {
+  document.getElementById('popoutBtn').style.display = 'none';
 }
 
 // ── State ────────────────────────────────────────────────────────────────────
@@ -484,7 +516,7 @@ function renderGarden(state) {
       return `<div class="slot bloom">
         <div class="slot-num">Slot ${s.slot}</div>
         ${spriteImg(s.plant_id, 3, 64, 'slot-sprite')}
-        <div class="slot-plant">${s.emoji} ${s.name}</div>
+        <div class="slot-plant">${s.name}</div>
         <div><span class="bloom-badge">🌺 Ready to harvest!</span></div>
       </div>`;
     }
