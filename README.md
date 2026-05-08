@@ -13,7 +13,7 @@ A cozy Twitch chatbot with a shared, expanding virtual garden. Viewers redeem ch
 - **35 real-world plants across 3 rarities** — common, uncommon, and rare flora with different watering profiles and petal payouts
 - **Botanical fun facts** — every plant comes with a real-world (or in-universe) trivia tidbit revealed when its seed is unwrapped
 - **Live OBS overlay** — a transparent browser-source overlay renders the garden in real time, complete with a wooden raised garden box, custom 64×64 pixel-art sprites, stage-based scaling, wind-sway animation, and a pop + sparkle animation whenever a plant advances a stage
-- **Viewer dashboard** — a web app viewers can open in their browser to see their petal balance, held seed, harvest history, a live garden view, and a graphical shop — optionally exposed publicly via localtunnel
+- **Viewer dashboard** — a web app viewers can open in their browser to see their petal balance, held seed, harvest history (with pixel-art sprites), a live garden view, and a graphical shop — optionally exposed publicly via Cloudflare Tunnel
 - **Petals economy** — harvest plants to earn 🌸 petals, then spend them in the shop
 - **Stream-wide upgrade & per-viewer consumables** — Compost Bin permanently improves the garden; Rain Cloud and Growth Tonic give one-shot boosts
 - **Persistent state** — SQLite database keeps the garden alive across restarts
@@ -86,7 +86,7 @@ All config lives in `.env`:
 | `WATER_COOLDOWN_MINUTES` | optional | Base cooldown between waters in petals-only mode, in minutes (default `10`) |
 | `COPPER_CAN_COOLDOWN_MINUTES` | optional | Cooldown once the Copper Can upgrade is purchased (default `8`) |
 | `SILVER_CAN_COOLDOWN_MINUTES` | optional | Cooldown once the Silver Can upgrade is purchased (default `6`) |
-| `DASHBOARD_TUNNEL` | optional | `false` (default) — dashboard is local-only; `true` — expose it publicly via localtunnel (requires `npm install localtunnel`). URL is printed to the console and announced in chat. |
+| `DASHBOARD_TUNNEL` | optional | `false` (default) — dashboard is local-only; `true` — expose it publicly via Cloudflare Tunnel (requires the `cloudflared` CLI). URL is printed to the console and announced in chat. |
 
 ¹ Only used when `USE_CHANNEL_REWARDS=true`. Reward IDs can be left blank initially — the bot will print the UUID to the console the first time someone redeems an unrecognized reward.<br>
 ² Only used when `USE_CHANNEL_REWARDS=false`.<br>
@@ -382,13 +382,18 @@ The bot includes a graphical web dashboard that viewers can open in their browse
 ### What the dashboard shows
 
 - **Stats** — current petal balance, held seed (with rarity badge), total harvests, and total waters given
-- **Garden view** — live slot-by-slot view of the garden synced via WebSocket (same feed as the OBS overlay)
+- **Garden view** — live slot-by-slot view of the garden synced via WebSocket, showing pixel-art sprites for each plant at its current stage
 - **Shop** — graphical shop organized by category; viewers can buy seeds, consumables, and upgrades directly from the browser; slot-targeting items (Fertilize, Growth Tonic) show an inline slot picker
-- **Harvest history** — a table of every plant the viewer personally harvested, with emoji, rarity, petal payout, and timestamp
+- **Harvest history** — a table of every plant the viewer personally harvested, with the bloom sprite, rarity, petal payout, and timestamp
 
 All purchases made via the dashboard are processed by the bot and posted to Twitch chat exactly like a chat command, so the stream still sees the activity.
 
 Authentication is honor-system: viewers type their Twitch username once and it's saved in their browser's local storage. There's no login gate — this is a cozy game, not a bank.
+
+### Dashboard controls
+
+- **⧉ Popout** — top-right corner of the banner; opens the dashboard in a compact 430×750 popup window. The username carries over automatically since localStorage is shared across same-origin windows. The popout button hides itself inside the popup.
+- **🔄 Refresh** — bottom of the banner; re-fetches all data (stats, garden, shop, history) without a full page reload, so the username is never lost.
 
 ### Local access (default)
 
@@ -400,26 +405,24 @@ http://localhost:8080/dashboard
 
 This is only accessible on the streamer's machine. Viewers need the public tunnel to reach it.
 
-### Public access via localtunnel
+### Public access via Cloudflare Tunnel
 
-Set `DASHBOARD_TUNNEL=true` in `.env` (and install localtunnel if needed):
-
-```bash
-npm install localtunnel
-```
+Set `DASHBOARD_TUNNEL=true` in `.env` and install the `cloudflared` CLI:
 
 ```env
 DASHBOARD_TUNNEL=true
 ```
 
+Download `cloudflared` from [developers.cloudflare.com](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) (single binary, no account needed) and put it somewhere on your PATH.
+
 On startup the bot will:
-1. Open a localtunnel to your local port
+1. Spawn `cloudflared` and open a quick tunnel to your local port
 2. Print the public URL to the console
-3. Post it in chat: `🌸 Garden Dashboard is live! Open https://xxxx.loca.lt/dashboard …`
+3. Post it in chat: `🌸 Garden Dashboard is live! Open https://xxxx.trycloudflare.com/dashboard …`
 
-The URL changes every time the bot restarts (localtunnel assigns a random subdomain), so consider re-posting it after each stream start.
+The URL changes every time the bot restarts, so re-post it at the start of each stream.
 
-> ⚠️ localtunnel routes traffic through a third-party relay server. The dashboard contains only game state (no passwords, no payment info), so this is acceptable for a cozy streaming bot — but don't enable it if you'd rather keep all traffic local.
+> ⚠️ Cloudflare Tunnel routes traffic through Cloudflare's network. The dashboard contains only game state (no passwords, no payment info), so this is acceptable for a cozy streaming bot — but leave `DASHBOARD_TUNNEL=false` if you'd rather keep all traffic local.
 
 ---
 

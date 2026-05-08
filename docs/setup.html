@@ -232,9 +232,9 @@ cd cozy-garden-bot</code></pre>
       <h4>What viewers see</h4>
       <ul>
         <li>🌸 Current petal balance &amp; held seed (with rarity badge)</li>
-        <li>🌿 Live garden view — synced in real time via WebSocket</li>
+        <li>🌿 Live garden view with pixel-art sprites — synced in real time via WebSocket</li>
         <li>🛒 Graphical shop, organized by category</li>
-        <li>📜 Personal harvest history — every plant they harvested, with emoji, rarity &amp; petals</li>
+        <li>📜 Harvest history with bloom sprites — every plant they harvested, with rarity &amp; petals</li>
       </ul>
     </div>
     <div class="mode-box">
@@ -243,6 +243,8 @@ cd cozy-garden-bot</code></pre>
         <li>Viewers type their Twitch username once — it's saved in their browser</li>
         <li>Shop purchases made in the dashboard are posted to Twitch chat automatically</li>
         <li>Garden updates appear instantly via the same WebSocket feed as the OBS overlay</li>
+        <li><strong>⧉ Popout</strong> button opens a compact 430×750 popup — username carries over automatically</li>
+        <li><strong>🔄 Refresh</strong> button in the banner re-fetches all data without logging out</li>
       </ul>
     </div>
   </div>
@@ -264,12 +266,10 @@ cd cozy-garden-bot</code></pre>
     </li>
     <li>
       <div>
-        <strong>(Optional) Expose a public URL with localtunnel</strong>
-        Install localtunnel and enable the tunnel in <code>.env</code>:
-        <pre><code>npm install localtunnel</code></pre>
-        Then set in your <code>.env</code>:
+        <strong>(Optional) Expose a public URL with Cloudflare Tunnel</strong>
+        Download the <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/" target="_blank">cloudflared CLI</a> (single binary, no account needed) and put it on your PATH. Then set in your <code>.env</code>:
         <pre><code>DASHBOARD_TUNNEL=true</code></pre>
-        On the next bot start, a public URL is printed to the console and posted to chat automatically. The URL changes each restart, so re-post it after each stream start.
+        On the next bot start, the bot spawns <code>cloudflared</code> automatically, prints the public URL to the console, and posts it to chat. The URL changes each restart, so re-post it at the start of each stream.
       </div>
     </li>
   </ol>
@@ -278,7 +278,7 @@ cd cozy-garden-bot</code></pre>
     <span class="callout-icon">📋</span>
     <div>
       <strong>Dashboard-specific env variables:</strong>
-      <br><code>DASHBOARD_TUNNEL</code> — <code>false</code> (default) keeps the dashboard local-only. Set to <code>true</code> to expose it publicly via localtunnel (requires <code>npm install localtunnel</code>).
+      <br><code>DASHBOARD_TUNNEL</code> — <code>false</code> (default) keeps the dashboard local-only. Set to <code>true</code> to expose it publicly via Cloudflare Tunnel (requires the <code>cloudflared</code> CLI on your PATH).
       <br><code>RAIN_COST</code> — petal cost of the 🌧️ Rain Cloud consumable in the shop (default: <code>200</code>).
       <br><code>TONIC_COST</code> — petal cost of the 🧪 Growth Tonic consumable in the shop (default: <code>150</code>).
     </div>
