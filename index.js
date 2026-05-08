@@ -3,7 +3,7 @@
 require('dotenv').config();
 const tmi = require('tmi.js');
 const db = require('./db');
-const { rollSeed, getPlant, getGrowthInfo, formatSlot, getEffectiveWatersNeeded, rarityLabel, extractSlot } = require('./helpers');
+const { rollSeed, getPlant, getGrowthInfo, formatSlot, getEffectiveWatersNeeded, rarityLabel, extractSlot, parseSlot } = require('./helpers');
 const overlayServer = require('./overlay/server');
 
 // Commands
@@ -749,6 +749,44 @@ function handleDashboardAction(username, actionId, slotArg) {
   // Petals-only mode gate (same rule as chat commands)
   if (!USE_CHANNEL_REWARDS && !db.hasClaimedStarter(lower)) {
     return { ok: false, messages: [`You haven't started your garden yet! Type !startgarden in chat first.`] };
+  }
+
+  // ── Plant (free action — not a shop item) ────────────────────────────────
+  if (actionId === 'plant') {
+    const viewer = db.getViewer(lower);
+    if (!viewer.held_seed) {
+      return { ok: false, messages: ['You don\'t have a seed to plant! Get one from the shop or a channel reward.'] };
+    }
+    const plant = getPlant(viewer.held_seed);
+    if (!plant) {
+      db.setHeldSeed(lower, null);
+      return { ok: false, messages: ['Your held seed is no longer available and has been released.'] };
+    }
+    const slotCount = db.getGardenSlotCount();
+    let targetSlotNum;
+    if (slotArg) {
+      const parsed = parseSlot(slotArg, slotCount);
+      if (!parsed.ok) {
+        return { ok: false, messages: [`Invalid slot — use a number between 1 and ${slotCount}.`] };
+      }
+      targetSlotNum = parsed.slot;
+      const existing = db.getSlot(targetSlotNum);
+      if (existing && existing.plant_id) {
+        return { ok: false, messages: [`Slot ${targetSlotNum} already has a plant! Choose an empty slot.`] };
+      }
+    } else {
+      const slots = db.getAllSlots();
+      const empty = slots.find(s => !s.plant_id);
+      if (!empty) {
+        return { ok: false, messages: ['The garden is full! Harvest a bloomed plant first to free up a slot.'] };
+      }
+      targetSlotNum = empty.slot;
+    }
+    db.plantInSlot(targetSlotNum, viewer.held_seed, lower);
+    db.setHeldSeed(lower, null);
+    const msg = `@${lower} 🌱 Planted ${plant.emoji} ${plant.name} in slot ${targetSlotNum}! Water it to help it grow 💧`;
+    client.say(channel, msg).catch(() => {});
+    return { ok: true, messages: [msg] };
   }
 
   const ctx = buildShopContext();

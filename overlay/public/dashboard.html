@@ -366,6 +366,14 @@
     </div>
   </div>
 
+  <!-- Plant seed -->
+  <div class="card" id="plantCard">
+    <div class="card-head">🌱 Plant Your Seed</div>
+    <div class="card-body" id="plantBody">
+      <div class="placeholder">Enter your username to plant your held seed.</div>
+    </div>
+  </div>
+
   <!-- Shop -->
   <div class="card" id="shopCard">
     <div class="card-head">🛒 Shop</div>
@@ -429,6 +437,7 @@ if (window.opener) {
 let currentUser = localStorage.getItem('cgb_username') || '';
 let shopData = null;
 let statsRefreshTimer = null;
+let viewerState = null;
 
 // ── Utilities ────────────────────────────────────────────────────────────────
 function showToast(msg, isError = false) {
@@ -459,6 +468,7 @@ async function loadViewer(username) {
   try {
     const r = await fetch(`/api/viewer/${encodeURIComponent(username)}`);
     const v = await r.json();
+    viewerState = v;
     document.getElementById('statPetals').textContent   = v.petals ?? '—';
     document.getElementById('statHarvests').textContent = v.harvest_count ?? '—';
     document.getElementById('statWaters').textContent   = v.waters_given ?? '—';
@@ -469,7 +479,63 @@ async function loadViewer(username) {
       document.getElementById('statSeedEmoji').textContent = '—';
       document.getElementById('statSeedName').textContent  = 'none';
     }
+    renderPlantPanel();
   } catch (e) { console.warn('loadViewer:', e); }
+}
+
+// ── Plant panel ───────────────────────────────────────────────────────────────
+function renderPlantPanel() {
+  const el = document.getElementById('plantBody');
+  if (!currentUser) {
+    el.innerHTML = '<div class="placeholder">Enter your username to plant your held seed.</div>';
+    return;
+  }
+  if (!viewerState?.held_seed) {
+    el.innerHTML = '<div class="placeholder">No seed to plant — get one from the shop or a channel reward! 🌱</div>';
+    return;
+  }
+  const { seed_emoji, seed_name, seed_rarity, held_seed } = viewerState;
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
+      <span style="font-size:2rem;line-height:1">${seed_emoji || '🌱'}</span>
+      <div>
+        <div style="font-weight:700;font-size:0.95rem">${seed_name || held_seed}</div>
+        <span class="rarity-badge rarity-${seed_rarity || 'common'}">${
+          seed_rarity === 'rare' ? '🌟 rare' : seed_rarity === 'uncommon' ? '🟢 uncommon' : '⚪ common'
+        }</span>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:0.5rem;flex-shrink:0">
+        <input class="slot-input" id="plantSlotInput" type="number" min="1" max="20"
+               placeholder="slot" title="Slot number (optional — auto-picks first empty slot)" />
+        <button class="btn-buy" id="plantBtn" onclick="plantSeed()">🌱 Plant</button>
+      </div>
+    </div>`;
+}
+
+async function plantSeed() {
+  if (!currentUser) { showToast('Enter your username first!', true); return; }
+  const slotInput = document.getElementById('plantSlotInput');
+  const slot = slotInput?.value.trim() || '';
+  const btn = document.getElementById('plantBtn');
+  btn.disabled = true;
+  try {
+    const r = await fetch('/api/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: currentUser, action: 'plant', slot: slot || undefined }),
+    });
+    const result = await r.json();
+    const msg = (result.messages || [])[0] || (result.ok ? 'Planted!' : 'Something went wrong.');
+    showToast(msg, !result.ok);
+    if (result.ok) {
+      if (slotInput) slotInput.value = '';
+      await loadViewer(currentUser);
+    }
+  } catch {
+    showToast('Request failed — is the bot running?', true);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 // ── History ──────────────────────────────────────────────────────────────────
