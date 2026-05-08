@@ -81,6 +81,9 @@ const IGNORED_USERS = new Set(
 // Always ignore our own bot account
 IGNORED_USERS.add(BOT_USERNAME.toLowerCase());
 
+// Set to the public tunnel URL once cloudflared connects, or the local URL otherwise.
+let dashboardUrl = null;
+
 function isIgnored(username) {
   if (!username) return true;
   return IGNORED_USERS.has(String(username).toLowerCase());
@@ -178,6 +181,14 @@ client.on('message', (chan, userstate, message, self) => {
 
     case '!gardeners':
       cmdGardeners(client, chan);
+      break;
+
+    case '!dashboard':
+      if (dashboardUrl) {
+        client.say(chan, `🌸 Garden Dashboard: ${dashboardUrl} — check your petals, seed & harvest history!`);
+      } else {
+        client.say(chan, `🌸 The dashboard is starting up — try again in a moment!`);
+      }
       break;
 
     case '!seed':
@@ -874,6 +885,7 @@ client.connect().then(() => {
       if (match) {
         urlAnnounced = true;
         const dashUrl = `${match[0]}/dashboard`;
+        dashboardUrl = dashUrl;
         console.log(`🌐 Public dashboard: ${dashUrl}`);
         client.say(channel, `🌸 Garden Dashboard is live! Open ${dashUrl} to see your petals, seed & shop. 🌿`)
           .catch(() => {});
@@ -899,7 +911,8 @@ client.connect().then(() => {
     // Kill the cloudflared child when the bot process exits
     process.on('exit', () => { try { cf.kill(); } catch {} });
   } else {
-    console.log(`🖥  Local dashboard: http://localhost:${OVERLAY_PORT}/dashboard`);
+    dashboardUrl = `http://localhost:${OVERLAY_PORT}/dashboard`;
+    console.log(`🖥  Local dashboard: ${dashboardUrl}`);
     console.log('   Set DASHBOARD_TUNNEL=true in .env to expose it publicly via cloudflared.');
   }
 }).catch(err => {

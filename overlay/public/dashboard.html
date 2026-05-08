@@ -525,7 +525,7 @@ function renderGarden(state) {
     return `<div class="slot">
       <div class="slot-num">Slot ${s.slot}</div>
       ${spriteImg(s.plant_id, s.stage, 64, 'slot-sprite')}
-      <div class="slot-plant">${s.emoji} ${s.name}</div>
+      <div class="slot-plant">${s.name}</div>
       <div class="slot-stage">${stageLabels[s.stage] || '?'} · ${s.watersDone}/${s.watersNeeded}💧</div>
       <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
     </div>`;
