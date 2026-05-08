@@ -5,8 +5,8 @@
 // SQLite file itself (keeps the file/permissions/WAL setup intact).
 //
 // DESTRUCTIVE — this clears every viewer, every petal balance, every planted
-// slot, every upgrade, and every consumable. It does NOT touch plants.json
-// or sprite assets.
+// slot, every upgrade, every consumable, and the full harvest log. It does
+// NOT touch plants.json or sprite assets.
 //
 // Run with: npm run reset-database -- --yes
 //
@@ -41,6 +41,7 @@ const tx = db.transaction(() => {
   db.prepare('DELETE FROM upgrades').run();
   db.prepare('DELETE FROM active_effects').run();
   db.prepare('DELETE FROM slot_buffs').run();
+  db.prepare('DELETE FROM harvest_log').run();
 
   // Reset garden slot count to the default
   db.prepare(`INSERT OR REPLACE INTO config (key, value) VALUES ('garden_slots', '3')`).run();
@@ -57,6 +58,7 @@ console.log('   • viewers:        all profiles, petals, and starter-claimed fl
 console.log('   • upgrades:       all stream-wide purchases reverted');
 console.log('   • active_effects: all per-viewer consumables removed');
 console.log('   • slot_buffs:     all slot-bound buffs (fertilizer, etc.) removed');
+console.log('   • harvest_log:    all harvest history cleared');
 console.log('   • garden size:    reset to default 3 slots');
 console.log('');
 console.log('   Plants.json and sprite assets were NOT touched.');
