@@ -53,6 +53,7 @@ function start(port = 8080, options = {}) {
   // Expose the sprite assets stored alongside plants.json so the overlay can load them.
   app.use('/sprites', express.static(path.join(__dirname, '..', 'data', 'Sprites')));
   app.get('/state', (req, res) => res.json(buildState()));
+  app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 'dashboard.html')));
 
   // ── Dashboard API ──────────────────────────────────────────────────────────
 

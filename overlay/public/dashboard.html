@@ -259,6 +259,20 @@
     #toast.show { transform: translateX(-50%) translateY(0); }
     #toast.error { background: #b03060; }
 
+    /* ── Sprites ────────────────────────────────────────────────────────────── */
+    .slot-sprite {
+      image-rendering: pixelated;
+      display: block;
+      margin: 0.1rem auto 0.25rem;
+      object-fit: contain;
+    }
+    .history-sprite {
+      image-rendering: pixelated;
+      vertical-align: middle;
+      margin-right: 0.35rem;
+      object-fit: contain;
+    }
+
     /* ── Placeholder ─────────────────────────────────────────────────────── */
     .placeholder {
       color: var(--text-muted);
@@ -351,6 +365,34 @@
 <div id="toast"></div>
 
 <script>
+// ── Sprite helpers ───────────────────────────────────────────────────────────
+const PLANT_SPRITE_FOLDERS = {
+  dandelion:'Dandelion', daisy:'Daisy', sunflower:'Sunflower', marigold:'Marigold',
+  tulip:'Tulip', daffodil:'Daffodil', cosmo:'Cosmo', petunia:'Petunia',
+  zinnia:'Zinnia', dahlia:'Dahlia', peony:'Peony', coneflower:'Coneflower',
+  impatiens:'Impatiens', pansy:'Pansy', mum:'Mum',
+  rose:'Rose', snapdragon:'Snapdragon', lavender:'Lavender', lily:'Lily',
+  fuchsia:'Fuchsia', sweetpeas:'SweetPeas', hydrangea:'Hydrangea',
+  gardenia:'Gardenia', hyacinth:'Hyacinth', poppy:'Poppy',
+  freesia:'Freesia', orchid:'Orchid', bluepoppy:'BluePoppy', batflower:'BatFlower',
+  chocolatecosmo:'ChocolateCosmo', verbena:'Verbena', bluebells:'Bluebells',
+  honeywort:'Honeywort', vinca:'Vinca', passiflora:'Passiflora',
+};
+const STAGE_NAMES = ['seed', 'sprout', 'budding', 'bloom'];
+
+function spritePath(plant_id, stage) {
+  if (stage === 0) return '/sprites/seed_sprite.png';
+  const folder = PLANT_SPRITE_FOLDERS[plant_id];
+  if (!folder) return null;
+  return `/sprites/${folder}/${plant_id}_${STAGE_NAMES[Math.min(stage, 3)]}_sprite.png`;
+}
+
+function spriteImg(plant_id, stage, size, cssClass) {
+  const path = spritePath(plant_id, stage);
+  if (!path) return '';
+  return `<img src="${path}" width="${size}" height="${size}" class="${cssClass}" onerror="this.style.display='none'">`;
+}
+
 // ── State ────────────────────────────────────────────────────────────────────
 let currentUser = localStorage.getItem('cgb_username') || '';
 let shopData = null;
@@ -417,7 +459,7 @@ async function loadHistory(username) {
         <th>Plant</th><th>Rarity</th><th>Petals</th><th>Slot</th><th>When</th>
       </tr></thead>
       <tbody>${rows.map(row => `<tr>
-        <td>${row.plant_emoji || ''} ${row.plant_name || row.plant_id}</td>
+        <td>${spriteImg(row.plant_id, 3, 32, 'history-sprite')}${row.plant_name || row.plant_id}</td>
         <td>${rarityBadge(row.rarity)}</td>
         <td>+${row.petals}🌸</td>
         <td>${row.slot}</td>
@@ -441,16 +483,18 @@ function renderGarden(state) {
     if (s.isBloom) {
       return `<div class="slot bloom">
         <div class="slot-num">Slot ${s.slot}</div>
+        ${spriteImg(s.plant_id, 3, 64, 'slot-sprite')}
         <div class="slot-plant">${s.emoji} ${s.name}</div>
         <div><span class="bloom-badge">🌺 Ready to harvest!</span></div>
       </div>`;
     }
-    const stages = ['🌱 Seed','🌿 Sprout','🌸 Budding'];
+    const stageLabels = ['🌱 Seed','🌿 Sprout','🌸 Budding'];
     const pct = s.watersNeeded > 0 ? Math.round((s.watersDone / s.watersNeeded) * 100) : 100;
     return `<div class="slot">
       <div class="slot-num">Slot ${s.slot}</div>
+      ${spriteImg(s.plant_id, s.stage, 64, 'slot-sprite')}
       <div class="slot-plant">${s.emoji} ${s.name}</div>
-      <div class="slot-stage">${stages[s.stage] || '?'} · ${s.watersDone}/${s.watersNeeded}💧</div>
+      <div class="slot-stage">${stageLabels[s.stage] || '?'} · ${s.watersDone}/${s.watersNeeded}💧</div>
       <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
     </div>`;
   }).join('');
