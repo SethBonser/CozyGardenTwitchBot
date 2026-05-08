@@ -859,55 +859,48 @@ client.connect().then(() => {
     .catch(err => console.warn('   (Could not post welcome message:', err && err.message, ')'));
 
   // Optional public dashboard tunnel — set DASHBOARD_TUNNEL=true in .env to enable.
-  // Gives viewers a public URL to open the dashboard in their own browser.
+  // Uses cloudflared (Cloudflare Tunnel) for a reliable public URL with no account needed.
+  // Install: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
   if (process.env.DASHBOARD_TUNNEL === 'true') {
-    // localtunnel's TunnelCluster can throw uncaught exceptions when the loca.lt
-    // relay server is offline or returns unexpected data for remote_port. Guard with
-    // a self-removing uncaughtException handler so the bot doesn't crash.
-    // A 30-second timeout cleans it up if no error ever fires.
-    const tunnelUncaughtHandler = (err) => {
-      // Don't self-remove — TunnelCluster retries and can throw more than once.
-      // The 30-second timeout below is the sole cleanup path.
-      console.warn('⚠️  Tunnel connection error (non-fatal):', err && err.message ? err.message : err);
-      console.warn('   The bot will continue running without a public dashboard URL.');
-      console.warn(`   Local dashboard is still available at http://localhost:${OVERLAY_PORT}/dashboard`);
-    };
-    process.on('uncaughtException', tunnelUncaughtHandler);
-    const tunnelHandlerTimeout = setTimeout(() => {
-      process.removeListener('uncaughtException', tunnelUncaughtHandler);
-    }, 30000).unref();
+    const { spawn } = require('child_process');
+    const cf = spawn('cloudflared', ['tunnel', '--url', `http://localhost:${OVERLAY_PORT}`], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
 
-    try {
-      const localtunnel = require('localtunnel');
-      localtunnel({ port: OVERLAY_PORT }).then(tunnel => {
-        clearTimeout(tunnelHandlerTimeout);
-        process.removeListener('uncaughtException', tunnelUncaughtHandler);
-        const dashUrl = `${tunnel.url}/dashboard`;
+    let urlAnnounced = false;
+    const handleCfOutput = (data) => {
+      if (urlAnnounced) return;
+      const match = data.toString().match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
+      if (match) {
+        urlAnnounced = true;
+        const dashUrl = `${match[0]}/dashboard`;
         console.log(`🌐 Public dashboard: ${dashUrl}`);
         client.say(channel, `🌸 Garden Dashboard is live! Open ${dashUrl} to see your petals, seed & shop. 🌿`)
           .catch(() => {});
-        tunnel.on('close', () => console.log('🔌 Tunnel closed. Restart the bot to get a new URL.'));
-        tunnel.on('error', err => console.warn('⚠️  Tunnel error:', err.message));
-      }).catch(err => {
-        clearTimeout(tunnelHandlerTimeout);
-        process.removeListener('uncaughtException', tunnelUncaughtHandler);
-        console.warn('⚠️  Could not start tunnel:', err.message);
-        console.warn('   The bot will continue running without a public dashboard URL.');
-        console.warn(`   Local dashboard is still available at http://localhost:${OVERLAY_PORT}/dashboard`);
-      });
-    } catch (e) {
-      // Don't remove the handler here — localtunnel's async internals may have already
-      // started and could still throw. The handler will self-remove on first error or
-      // after the 30-second timeout.
-      if (e.code === 'MODULE_NOT_FOUND') {
-        console.warn('⚠️  localtunnel is not installed. Run: npm install localtunnel');
-      } else {
-        console.warn('⚠️  localtunnel failed to load:', e.message);
       }
-    }
+    };
+    cf.stdout.on('data', handleCfOutput);
+    cf.stderr.on('data', handleCfOutput);
+
+    cf.on('error', err => {
+      if (err.code === 'ENOENT') {
+        console.warn('⚠️  cloudflared not found — DASHBOARD_TUNNEL requires the cloudflared CLI.');
+        console.warn('   Download: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/');
+      } else {
+        console.warn('⚠️  cloudflared error:', err.message);
+      }
+      console.warn(`   Local dashboard still available at http://localhost:${OVERLAY_PORT}/dashboard`);
+    });
+
+    cf.on('close', () => {
+      if (urlAnnounced) console.log('🔌 Cloudflare tunnel closed. Restart the bot to get a new URL.');
+    });
+
+    // Kill the cloudflared child when the bot process exits
+    process.on('exit', () => { try { cf.kill(); } catch {} });
   } else {
     console.log(`🖥  Local dashboard: http://localhost:${OVERLAY_PORT}/dashboard`);
-    console.log('   Set DASHBOARD_TUNNEL=true in .env to expose it publicly.');
+    console.log('   Set DASHBOARD_TUNNEL=true in .env to expose it publicly via cloudflared.');
   }
 }).catch(err => {
   console.error('❌  Failed to connect to Twitch IRC.');
