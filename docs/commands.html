@@ -35,27 +35,7 @@
     <div>In <strong>Channel Rewards mode</strong> (default), actions like getting seeds, watering, and harvesting are done via Twitch channel point rewards — not chat commands. Viewers still use chat commands for planting, viewing the garden, and the shop.</div>
   </div>
 
-  <!-- ════════════════════════════════════════════════════════════
-       VIEWER DASHBOARD
-  ═════════════════════════════════════════════════════════════ -->
-  <div class="section-header">
-    <span class="section-icon">📊</span>
-    <h2>Viewer Dashboard</h2>
-  </div>
-  <p style="color:var(--text-muted);margin-bottom:1.25rem">
-    The viewer dashboard is a graphical web app where viewers can check their petal balance, browse the shop, see the live garden, and review their harvest history — all without typing a single chat command. It's served by the bot and optionally exposed publicly via Cloudflare Tunnel so anyone watching can open it on their phone or laptop.
-  </p>
-
-  <div class="cmd-grid" style="margin-bottom:2rem">
-    <div class="cmd-row">
-      <code>!dashboard</code>
-      <div class="cmd-desc">
-        Posts the dashboard URL to chat so viewers can open it in their browser. The link goes to the public Cloudflare Tunnel URL when <code>DASHBOARD_TUNNEL=true</code>, or to the local URL otherwise. Works in both Channel Rewards and Petals modes.
-      </div>
-    </div>
-  </div>
-
-  <!-- Dashboard preview mockup -->
+  <!-- Dashboard preview styles (used below, after commands) -->
   <style>
     .dp-frame {
       border: 2px solid var(--border);
@@ -206,182 +186,6 @@
     .dp-refresh-row { border-top: 2px solid var(--border); background: #fef0f6; padding: 0.5rem 1rem; display: flex; justify-content: center; }
     .dp-refresh-btn { background: none; border: 1.5px solid var(--border); border-radius: 7px; padding: 0.3rem 1rem; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); cursor: default; }
   </style>
-
-  <div class="dp-frame">
-    <!-- Browser chrome -->
-    <div class="dp-chrome">
-      <div class="dp-dot r"></div>
-      <div class="dp-dot y"></div>
-      <div class="dp-dot g"></div>
-      <div class="dp-urlbar">https://xxxx.trycloudflare.com/dashboard</div>
-    </div>
-
-    <!-- Bot nav bar -->
-    <div class="dp-nav">
-      <span class="dp-brand">🌸 CozyGardenBot</span>
-      <div class="dp-user-form">
-        <input class="dp-input" value="viewer123" readonly />
-        <button class="dp-load-btn">Load</button>
-      </div>
-      <button class="dp-popout-btn" title="Open in popup window">⧉</button>
-    </div>
-
-    <!-- Tabs -->
-    <div class="dp-tabs">
-      <div class="dp-tab active">Stats</div>
-      <div class="dp-tab">Garden</div>
-      <div class="dp-tab">Shop</div>
-      <div class="dp-tab">History</div>
-    </div>
-
-    <!-- Body -->
-    <div class="dp-body">
-
-      <!-- Stats -->
-      <div class="dp-stats">
-        <div class="dp-stat">
-          <div class="dp-label">🌸 Petals</div>
-          <div class="dp-val">2,450</div>
-        </div>
-        <div class="dp-stat">
-          <div class="dp-label">🌱 Held Seed</div>
-          <div class="dp-val" style="font-size:0.88rem">Rose <span class="dp-badge" style="background:var(--green-light);color:var(--green-dark)">uncommon</span></div>
-        </div>
-        <div class="dp-stat">
-          <div class="dp-label">🌺 Harvests</div>
-          <div class="dp-val">12</div>
-        </div>
-        <div class="dp-stat">
-          <div class="dp-label">💧 Waters Given</div>
-          <div class="dp-val">47</div>
-        </div>
-      </div>
-
-      <!-- Garden snapshot -->
-      <div class="dp-section-label">Live Garden</div>
-      <div class="dp-garden">
-        <div class="dp-slot bloom">
-          <div class="dp-slotnum">Slot 1</div>
-          <span class="dp-sprite">🌺</span>
-          <div class="dp-plantname">Lavender</div>
-          <div class="dp-stage" style="color:#c8920c;font-weight:700">Blooming ✨</div>
-        </div>
-        <div class="dp-slot">
-          <div class="dp-slotnum">Slot 2</div>
-          <span class="dp-sprite">🌿</span>
-          <div class="dp-plantname">Sunflower</div>
-          <div class="dp-stage">Sprout · 2/4💧</div>
-        </div>
-        <div class="dp-slot">
-          <div class="dp-slotnum">Slot 3</div>
-          <span class="dp-sprite">🌱</span>
-          <div class="dp-plantname">Orchid</div>
-          <div class="dp-stage">Seed · 0/3💧</div>
-        </div>
-        <div class="dp-slot" style="color:var(--text-muted)">
-          <div class="dp-slotnum">Slot 4</div>
-          <span class="dp-sprite" style="opacity:0.35">·</span>
-          <div class="dp-plantname" style="font-style:italic;font-weight:400;color:var(--text-muted)">empty</div>
-          <div class="dp-stage"></div>
-        </div>
-      </div>
-
-      <!-- Harvest history snippet -->
-      <div class="dp-section-label">Harvest History</div>
-      <table class="dp-history">
-        <thead>
-          <tr>
-            <th>Plant</th>
-            <th>Rarity</th>
-            <th>Petals</th>
-            <th>When</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>🌺 Chocolate Cosmo</td>
-            <td><span class="dp-rarity-rare">Rare</span></td>
-            <td>600 🌸</td>
-            <td>10 min ago</td>
-          </tr>
-          <tr>
-            <td>🪷 Lily</td>
-            <td><span class="dp-rarity-uncommon">Uncommon</span></td>
-            <td>250 🌸</td>
-            <td>1h ago</td>
-          </tr>
-          <tr>
-            <td>🌼 Daisy</td>
-            <td><span class="dp-rarity-common">Common</span></td>
-            <td>100 🌸</td>
-            <td>3h ago</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Refresh strip -->
-    <div class="dp-refresh-row">
-      <button class="dp-refresh-btn">🔄 Refresh</button>
-    </div>
-  </div>
-
-  <!-- Feature breakdown -->
-  <div class="subsection">
-    <h3>📋 What's on the dashboard</h3>
-    <div class="cmd-grid">
-
-      <div class="cmd-row">
-        <strong style="align-self:center">Stats tab</strong>
-        <div class="cmd-desc">
-          Petal balance, held seed with rarity badge, total harvests, and total waters given — the viewer's full garden profile at a glance.
-        </div>
-      </div>
-
-      <div class="cmd-row">
-        <strong style="align-self:center">Garden tab</strong>
-        <div class="cmd-desc">
-          Live slot-by-slot view of the shared garden, synced via WebSocket. Each slot shows the plant's pixel-art sprite at its current growth stage, stage label, and water progress. Blooming slots are highlighted in gold.
-        </div>
-      </div>
-
-      <div class="cmd-row">
-        <strong style="align-self:center">Shop tab</strong>
-        <div class="cmd-desc">
-          A graphical shop organized by category (seeds, garden actions, upgrades, boosts). Viewers can buy items directly — slot-targeting items like Growth Tonic and Fertilize show an inline slot picker. Purchases are processed identically to chat commands and posted to Twitch chat.
-        </div>
-      </div>
-
-      <div class="cmd-row">
-        <strong style="align-self:center">History tab</strong>
-        <div class="cmd-desc">
-          Every plant the viewer personally harvested, with the bloom sprite, plant name, rarity, petal payout, and timestamp.
-        </div>
-      </div>
-
-      <div class="cmd-row">
-        <strong style="align-self:center">⧉ Popout button</strong>
-        <div class="cmd-desc">
-          Top-right corner of the nav bar. Opens the dashboard in a compact 430 × 750 popup — great for keeping it open alongside a stream on a second monitor or phone. The username carries over automatically and the popout button hides itself inside the popup.
-        </div>
-      </div>
-
-      <div class="cmd-row">
-        <strong style="align-self:center">🔄 Refresh button</strong>
-        <div class="cmd-desc">
-          Bottom of the nav bar. Re-fetches all data (stats, garden, shop, history) without a full page reload — the typed username is never lost.
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <div class="callout callout-green" style="margin-bottom:2.5rem">
-    <span class="callout-icon">🌐</span>
-    <div>
-      By default the dashboard is local-only (<code>http://localhost:8080/dashboard</code>). Set <code>DASHBOARD_TUNNEL=true</code> in <code>.env</code> and install the <code>cloudflared</code> CLI to expose it publicly. The bot will post the public URL to chat on startup — or viewers can ask for it anytime with <code>!dashboard</code>.
-    </div>
-  </div>
 
   <!-- ════════════════════════════════════════════════════════════
        VIEWER COMMANDS
@@ -628,6 +432,209 @@
     </div>
   </div>
 
+  <!-- ════════════════════════════════════════════════════════════
+       VIEWER DASHBOARD
+  ═════════════════════════════════════════════════════════════ -->
+  <div class="section-header">
+    <span class="section-icon">📊</span>
+    <h2>Viewer Dashboard</h2>
+  </div>
+  <p style="color:var(--text-muted);margin-bottom:1.25rem">
+    The viewer dashboard is a graphical web app where viewers can check their petal balance, browse the shop, see the live garden, plant their held seed, and review their harvest history — all without typing a single chat command. It's served by the bot and optionally exposed publicly via Cloudflare Tunnel so anyone watching can open it on their phone or laptop.
+  </p>
+
+  <div class="cmd-grid" style="margin-bottom:2rem">
+    <div class="cmd-row">
+      <code>!dashboard</code>
+      <div class="cmd-desc">
+        Posts the dashboard URL to chat so viewers can open it in their browser. The link goes to the public Cloudflare Tunnel URL when <code>DASHBOARD_TUNNEL=true</code>, or to the local URL otherwise. Works in both Channel Rewards and Petals modes.
+      </div>
+    </div>
+  </div>
+
+  <div class="dp-frame">
+    <!-- Browser chrome -->
+    <div class="dp-chrome">
+      <div class="dp-dot r"></div>
+      <div class="dp-dot y"></div>
+      <div class="dp-dot g"></div>
+      <div class="dp-urlbar">https://xxxx.trycloudflare.com/dashboard</div>
+    </div>
+
+    <!-- Bot nav bar -->
+    <div class="dp-nav">
+      <span class="dp-brand">🌸 CozyGardenBot</span>
+      <div class="dp-user-form">
+        <input class="dp-input" value="viewer123" readonly />
+        <button class="dp-load-btn">Load</button>
+      </div>
+      <button class="dp-popout-btn" title="Open in popup window">⧉</button>
+    </div>
+
+    <!-- Body (no tabs — scrollable single page) -->
+    <div class="dp-body">
+
+      <!-- Stats -->
+      <div class="dp-stats">
+        <div class="dp-stat">
+          <div class="dp-label">🌸 Petals</div>
+          <div class="dp-val">2,450</div>
+        </div>
+        <div class="dp-stat">
+          <div class="dp-label">🌱 Held Seed</div>
+          <div class="dp-val" style="font-size:0.88rem">Rose <span class="dp-badge" style="background:var(--green-light);color:var(--green-dark)">uncommon</span></div>
+        </div>
+        <div class="dp-stat">
+          <div class="dp-label">🌺 Harvests</div>
+          <div class="dp-val">12</div>
+        </div>
+        <div class="dp-stat">
+          <div class="dp-label">💧 Waters Given</div>
+          <div class="dp-val">47</div>
+        </div>
+      </div>
+
+      <!-- Garden snapshot -->
+      <div class="dp-section-label">Live Garden</div>
+      <div class="dp-garden">
+        <div class="dp-slot bloom">
+          <div class="dp-slotnum">Slot 1</div>
+          <span class="dp-sprite">🌺</span>
+          <div class="dp-plantname">Lavender</div>
+          <div class="dp-stage" style="color:#c8920c;font-weight:700">Blooming ✨</div>
+        </div>
+        <div class="dp-slot">
+          <div class="dp-slotnum">Slot 2</div>
+          <span class="dp-sprite">🌿</span>
+          <div class="dp-plantname">Sunflower</div>
+          <div class="dp-stage">Sprout · 2/4💧</div>
+        </div>
+        <div class="dp-slot">
+          <div class="dp-slotnum">Slot 3</div>
+          <span class="dp-sprite">🌱</span>
+          <div class="dp-plantname">Orchid</div>
+          <div class="dp-stage">Seed · 0/3💧</div>
+        </div>
+        <div class="dp-slot" style="color:var(--text-muted)">
+          <div class="dp-slotnum">Slot 4</div>
+          <span class="dp-sprite" style="opacity:0.35">·</span>
+          <div class="dp-plantname" style="font-style:italic;font-weight:400;color:var(--text-muted)">empty</div>
+          <div class="dp-stage"></div>
+        </div>
+      </div>
+
+      <!-- Plant your seed -->
+      <div class="dp-section-label">Plant Your Seed</div>
+      <div style="background:#fff;border:1.5px solid var(--border);border-radius:8px;padding:0.65rem 0.75rem;display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap">
+        <span style="font-size:1.6rem;line-height:1">🌹</span>
+        <div>
+          <div style="font-weight:700;font-size:0.78rem">Rose</div>
+          <span style="display:inline-block;padding:0.1em 0.4em;border-radius:5px;font-size:0.68rem;font-weight:700;background:#d4f0d4;color:var(--green-dark)">🟢 uncommon</span>
+        </div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:0.4rem;flex-shrink:0">
+          <input style="width:44px;border:1px solid var(--border);border-radius:5px;padding:0.15rem 0.3rem;font-size:0.76rem;text-align:center;background:#fff" placeholder="slot" readonly />
+          <button style="background:#e8779a;color:#fff;border:none;border-radius:6px;padding:0.22rem 0.6rem;font-size:0.76rem;font-weight:700;cursor:default">🌱 Plant</button>
+        </div>
+      </div>
+
+      <!-- Harvest history snippet -->
+      <div class="dp-section-label">Harvest History</div>
+      <table class="dp-history">
+        <thead>
+          <tr><th>Plant</th><th>Rarity</th><th>Petals</th><th>When</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>🌺 Chocolate Cosmo</td>
+            <td><span class="dp-rarity-rare">Rare</span></td>
+            <td>600 🌸</td>
+            <td>10 min ago</td>
+          </tr>
+          <tr>
+            <td>🪷 Lily</td>
+            <td><span class="dp-rarity-uncommon">Uncommon</span></td>
+            <td>250 🌸</td>
+            <td>1h ago</td>
+          </tr>
+          <tr>
+            <td>🌼 Daisy</td>
+            <td><span class="dp-rarity-common">Common</span></td>
+            <td>100 🌸</td>
+            <td>3h ago</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Refresh strip -->
+    <div class="dp-refresh-row">
+      <button class="dp-refresh-btn">🔄 Refresh</button>
+    </div>
+  </div>
+
+  <!-- Feature breakdown -->
+  <div class="subsection">
+    <h3>📋 What's on the dashboard</h3>
+    <div class="cmd-grid">
+
+      <div class="cmd-row">
+        <strong style="align-self:center">Stats</strong>
+        <div class="cmd-desc">
+          Petal balance, held seed with rarity badge, total harvests, and total waters given — the viewer's full garden profile at a glance.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <strong style="align-self:center">Live Garden</strong>
+        <div class="cmd-desc">
+          Slot-by-slot view of the shared garden, synced in real time via WebSocket. Each slot shows the plant's pixel-art sprite at its current growth stage, stage label, and water progress. Blooming slots are highlighted in gold.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <strong style="align-self:center">Plant Your Seed</strong>
+        <div class="cmd-desc">
+          If the viewer is holding a seed, a panel appears below the garden showing the seed name and rarity. An optional slot input lets them target a specific slot — leaving it blank auto-picks the first empty one. The Plant button posts the result to Twitch chat exactly like <code>!plant</code>.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <strong style="align-self:center">Shop</strong>
+        <div class="cmd-desc">
+          Graphical shop organised by category (seeds, garden actions, upgrades, boosts). Viewers can buy items directly — slot-targeting items like Growth Tonic and Fertilize show an inline slot picker. Purchases are processed identically to chat commands and posted to Twitch chat.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <strong style="align-self:center">Harvest History</strong>
+        <div class="cmd-desc">
+          Every plant the viewer personally harvested, with the bloom sprite, plant name, rarity, petal payout, and timestamp.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <strong style="align-self:center">⧉ Popout button</strong>
+        <div class="cmd-desc">
+          Top-right corner of the nav bar. Opens the dashboard in a compact 430 × 750 popup — great for keeping it open alongside a stream on a second monitor or phone. The username carries over automatically and the popout button hides itself inside the popup.
+        </div>
+      </div>
+
+      <div class="cmd-row">
+        <strong style="align-self:center">🔄 Refresh button</strong>
+        <div class="cmd-desc">
+          Bottom of the nav bar. Re-fetches all data without a full page reload — the typed username is never lost.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="callout callout-green" style="margin-bottom:2.5rem">
+    <span class="callout-icon">🌐</span>
+    <div>
+      By default the dashboard is local-only (<code>http://localhost:8080/dashboard</code>). Set <code>DASHBOARD_TUNNEL=true</code> in <code>.env</code> and install the <code>cloudflared</code> CLI to expose it publicly. The bot will post the public URL to chat on startup — or viewers can ask for it anytime with <code>!dashboard</code>.
+    </div>
+  </div>
 
 </div>
 
