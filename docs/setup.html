@@ -259,28 +259,91 @@ cd cozy-garden-bot</code></pre>
     <li>
       <div>
         <strong>Access the dashboard locally</strong>
-        Open this URL in a browser on the same machine:
+        Open this URL in a browser on the same machine as the bot:
         <pre><code>http://localhost:8080/dashboard</code></pre>
-        This is only visible to you (the streamer). To share it with viewers, see the tunnel option below.
-      </div>
-    </li>
-    <li>
-      <div>
-        <strong>(Optional) Expose a public URL with Cloudflare Tunnel</strong>
-        Download the <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/" target="_blank">cloudflared CLI</a> (single binary, no account needed) and put it on your PATH. Then set in your <code>.env</code>:
-        <pre><code>DASHBOARD_TUNNEL=true</code></pre>
-        On the next bot start, the bot spawns <code>cloudflared</code> automatically, prints the public URL to the console, and posts it to chat. The URL changes each restart, so re-post it at the start of each stream.
+        This is only visible to you (the streamer). To share it publicly with viewers, follow the Cloudflare Tunnel steps below.
       </div>
     </li>
   </ol>
 
-  <div class="callout callout-pink">
-    <span class="callout-icon">📋</span>
-    <div>
-      <strong>Dashboard-specific env variables:</strong>
-      <br><code>DASHBOARD_TUNNEL</code> — <code>false</code> (default) keeps the dashboard local-only. Set to <code>true</code> to expose it publicly via Cloudflare Tunnel (requires the <code>cloudflared</code> CLI on your PATH).
-      <br><code>RAIN_COST</code> — petal cost of the 🌧️ Rain Cloud consumable in the shop (default: <code>200</code>).
-      <br><code>TONIC_COST</code> — petal cost of the 🧪 Growth Tonic consumable in the shop (default: <code>150</code>).
+  <!-- ── Cloudflare Tunnel sub-section ── -->
+  <div class="subsection">
+    <h3>🌐 Public Access via Cloudflare Tunnel (Optional)</h3>
+    <p style="font-size:0.9rem;color:var(--text-muted);margin-bottom:1rem">
+      Cloudflare Tunnel creates a secure public URL that routes through Cloudflare's network directly to your bot — no router configuration, port forwarding, or Cloudflare account required. The bot spawns it automatically at startup when enabled.
+    </p>
+
+    <ol class="steps">
+      <li>
+        <div>
+          <strong>Download the <code>cloudflared</code> binary</strong>
+          Go to the <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/" target="_blank">Cloudflare downloads page</a> and download the binary for your OS:
+          <ul style="margin-top:0.5rem">
+            <li><strong>Windows</strong> — download <code>cloudflared-windows-amd64.exe</code></li>
+            <li><strong>macOS</strong> — download <code>cloudflared-darwin-amd64.tgz</code> or install via <code>brew install cloudflared</code></li>
+            <li><strong>Linux</strong> — download the <code>.deb</code> / <code>.rpm</code> package or the raw binary for your architecture</li>
+          </ul>
+          No account, login, or license key needed — it's a free, single-file download.
+        </div>
+      </li>
+      <li>
+        <div>
+          <strong>Add <code>cloudflared</code> to your PATH</strong>
+          The bot launches it by name (<code>cloudflared</code>), so the binary needs to be findable in your shell.
+          <ul style="margin-top:0.5rem">
+            <li>
+              <strong>Windows</strong> — rename the downloaded file to <code>cloudflared.exe</code>, move it to a folder already on your PATH (e.g. <code>C:\Windows\System32</code> or create a new folder like <code>C:\tools</code> and add that folder to PATH via System Properties → Environment Variables), then verify with:
+              <pre><code>cloudflared --version</code></pre>
+            </li>
+            <li>
+              <strong>macOS / Linux</strong> — move the binary to <code>/usr/local/bin/cloudflared</code> and make it executable:
+              <pre><code>chmod +x /usr/local/bin/cloudflared
+cloudflared --version</code></pre>
+            </li>
+          </ul>
+          If the version number prints, you're ready.
+        </div>
+      </li>
+      <li>
+        <div>
+          <strong>Enable the tunnel in <code>.env</code></strong>
+          Open your <code>.env</code> file and set:
+          <pre><code>DASHBOARD_TUNNEL=true</code></pre>
+        </div>
+      </li>
+      <li>
+        <div>
+          <strong>Start (or restart) the bot</strong>
+          <pre><code>npm start</code></pre>
+          Within a few seconds you should see a line like this in the console:
+          <pre><code>🌐 Public dashboard: https://xxxx-xxxx.trycloudflare.com/dashboard</code></pre>
+          The bot also posts the URL to your Twitch chat automatically:
+          <pre><code>🌸 Garden Dashboard is live! Open https://xxxx.trycloudflare.com/dashboard ...</code></pre>
+        </div>
+      </li>
+      <li>
+        <div>
+          <strong>Share the URL with your viewers</strong>
+          The public URL is valid for the entire session but <strong>changes every time the bot restarts</strong>. Re-share it at the start of each stream. Viewers can also type <code>!dashboard</code> in chat anytime to get the current link posted automatically.
+        </div>
+      </li>
+    </ol>
+
+    <div class="callout callout-gold">
+      <span class="callout-icon">⚠️</span>
+      <div>
+        If the bot prints <code>cloudflared not found</code> at startup, the binary either isn't installed or isn't on your PATH. Double-check step 2 above — open a <strong>new</strong> terminal window after editing PATH so the change takes effect, then run <code>cloudflared --version</code> to confirm it's reachable.
+      </div>
+    </div>
+
+    <div class="callout callout-pink">
+      <span class="callout-icon">📋</span>
+      <div>
+        <strong>Dashboard env variables at a glance:</strong><br>
+        <code>DASHBOARD_TUNNEL</code> — <code>false</code> (default) keeps the dashboard local-only; <code>true</code> enables Cloudflare Tunnel (requires <code>cloudflared</code> on PATH).<br>
+        <code>RAIN_COST</code> — petal cost of the 🌧️ Rain Cloud consumable in the shop (default: <code>200</code>).<br>
+        <code>TONIC_COST</code> — petal cost of the 🧪 Growth Tonic consumable in the shop (default: <code>150</code>).
+      </div>
     </div>
   </div>
 
